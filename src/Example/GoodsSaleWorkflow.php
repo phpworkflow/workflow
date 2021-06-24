@@ -1,0 +1,142 @@
+<?php
+namespace Workflow\Example;
+
+use Workflow\Workflow;
+use Workflow\Logger\ILogger;
+
+class GoodsSaleWorkflow extends Workflow {
+
+    const NUM_CYCLES = 9;
+    const EXEC_TIMEOUT = 1;
+    const CONTEXT_VALUE_NAME = 'test_execution_time';
+
+    // Workflow events
+    const EVENT_GOODS_SELECTED='GOODS_SELECTED';
+    const EVENT_SUPPLIER_SENT_GOODS='SUPPLIER_SENT_GOODS';
+    const EVENT_CUSTOMER_PAY_FOR_GOODS='CUSTOMER_PAY_FOR_GOODS';
+
+    const WF_KEY_CUSTOMER='customer_id';
+
+    public function __construct() {
+        $process_nodes = [
+            ["select_goods"],
+            ["wait_for_event1", "timeout" => 2],
+            ["goto_select_goods"],
+            ["checkout"],
+            ["if_selected_goods_on_stock",
+                "then" => [
+                    ["make_order"],
+                ],
+                "else" => [
+                    ["send_request_to_supplier"],
+                    ["wait_for_event2", "timeout" => 7], // If EVENT_SUPPLIER_SENT_GOODS arrived we go to make_order
+                    ["report_no_goods"],
+                    ["goto_show_result"],
+                ]
+            ],
+            ["create_bill"],
+            ["!if_customer_pay_for_goods",
+                "then" => [
+                    ["wait_for_payment", "timeout" => 2],
+                    ["goto_if_customer_pay_for_goods", "counter" => 2],
+                    ["report_no_payment"],
+                    ["goto_show_result"],
+                ],
+                "else" => [
+                    ["goto_send_goods"]
+                ]
+            ],
+            ["send_goods"],
+            ["show_result"],
+            ["end"]
+        ];
+
+        $events_map = [
+            self::EVENT_GOODS_SELECTED => [
+                self::EVENT_ON => true,
+                self::EVENT_TARGET => "checkout",
+                self::EVENT_FILTER => ['customer_id']
+            ],
+            self::EVENT_SUPPLIER_SENT_GOODS => [
+                self::EVENT_ON => false,
+                self::EVENT_TARGET => "make_order",
+                self::EVENT_FILTER => []
+            ],
+            self::EVENT_CUSTOMER_PAY_FOR_GOODS => [
+                self::EVENT_ON => true,
+                self::EVENT_TARGET => "send_goods"]
+        ];
+
+        parent::__construct($process_nodes, $events_map);
+        $this->logger->set_log_channel(ILogger::LOG_CONSOLE);
+    }
+
+// This methods should be implemented by programmer BEGIN
+    public function select_goods() {
+        // Do something....
+        sleep(1);
+    }
+
+    public function checkout() {
+        // Do checkout action
+        sleep(1);
+    }
+
+    public function if_selected_goods_on_stock() {
+        // Some logic that check the depot
+        $rnd=random_int(0,3);
+        return ( $rnd === 0 );
+    }
+
+    public function make_order() {
+        $this->stop_wait_for(self::EVENT_SUPPLIER_SENT_GOODS);
+        // Make order and send it to some department
+        sleep(1);
+    }
+
+    public function send_request_to_supplier() {
+        // Send request to supplier
+        error_log("This is request to supplier\n");
+        $this->start_wait_for(self::EVENT_SUPPLIER_SENT_GOODS);
+    }
+
+    public function report_no_goods() {
+        error_log("NO GOODS!!! Change the supplier!\n");
+    }
+
+    public function create_bill() {
+        // Create bill and send it to customer
+        error_log("Bill was sent to customer!\n");
+    }
+
+    public function send_goods() {
+        // Create bill and send it to customer
+        error_log("CUSTOMER GOT GOODS\n");
+        $this->set_context("order_successful","order_ok");
+    }
+
+    public function show_result() {
+        if($this->get_context("order_successful")) {
+            error_log("THIS IS SUCCESSFUL FLOW!\n");
+        }
+        else {
+            error_log("EPIC FAIL :-(\n");
+        }
+
+    }
+
+    public function report_no_payment() {
+        error_log("NO PAYMENT! Bad customer\n");
+    }
+
+    public function if_customer_pay_for_goods() {
+        $payment=$this->get_context("customer_pay_for_goods");
+        return !empty($payment);
+    }
+
+// This methods should be implemented by programmer BEGIN
+
+    public function get_supported_business_objects() {
+        return [];
+    }
+}

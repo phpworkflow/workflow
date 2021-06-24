@@ -1,0 +1,76 @@
+<?php
+namespace Workflow\Engine;
+
+use Workflow\Logger\ILogger;
+use Workflow\Storage\IStorage;
+use Workflow\Workflow;
+use Workflow\Event;
+
+class Simple extends AbstractEngine {
+    private $num_cycles=1;
+    private $sleep_time=3;
+
+    public function __construct(IStorage $storage, ILogger $logger)
+    {
+        parent::__construct($storage, $logger);
+        if(!function_exists('pcntl_signal')) {
+            error_log("Graceful exit not supported");
+            return;
+        }
+
+        pcntl_signal(SIGTERM, [$this, "sigHandler"]);
+        pcntl_signal(SIGHUP,  [$this, "sigHandler"]);
+    }
+
+    public function run() {
+        while($this->num_cycles-- && !$this->exit) {
+            $this->execute_workflows();
+            sleep($this->sleep_time);
+        }
+    }
+
+    private function execute_workflows() {
+        $this->logger->debug("Start");
+        $wf_ids=$this->storage->get_active_workflow_ids();
+
+        foreach($wf_ids as $id) {
+            /* @var Workflow $workflow */
+            // Lock and get workflow object
+            $workflow=$this->storage->get_workflow($id);
+            if($workflow === null) {
+                continue; // Workflow is locked
+            }
+
+            if(!$workflow->is_finished()) {
+                // Function is executed after successful event processing
+                $workflow->set_sync_callback(function(Workflow $workflow, Event $event) {
+                    $this->storage->close_event($event);
+                    $this->storage->save_workflow($workflow, false);
+                });
+
+                $events=$this->storage->get_events($id);
+                $workflow->run($events);
+            }
+            // Save and unlock workflow
+            $this->storage->save_workflow($workflow);
+
+            if($this->exit) {
+                return;
+            }
+        }
+
+        $this->storage->cleanup();
+        $this->logger->debug("Finish");
+    }
+
+    public function set_params($num_cycles, $sleep_time) {
+        $this->num_cycles=$num_cycles;
+        $this->sleep_time=$sleep_time;
+    }
+
+    protected function sigHandler($signo)
+    {
+        error_log("Signal $signo arrived. Exiting...");
+        $this->exit = true;
+    }
+}
