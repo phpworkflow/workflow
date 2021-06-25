@@ -1,7 +1,8 @@
 {
   "name": "phpworkflow/workflow",
   "description": "PHP workflow framework",
-  "minimum-stability": "stable",
+  "minimum-stability": "dev",
+  "type": "library",
   "license": "MIT",
   "authors": [
     {
