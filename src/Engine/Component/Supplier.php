@@ -6,9 +6,9 @@ use Swoole\Server;
 
 class Supplier implements IComponent
 {
-    const GET_TASKS_INTERVAL = 5000; // milliseconds
+    const GET_TASKS_INTERVAL = 5; // Seconds
 
-    const CLEANUP_PERIOD = 300000; // milliseconds
+    const CLEANUP_PERIOD = 300; // Seconds
 
     /**
      * @var Server
@@ -33,13 +33,18 @@ class Supplier implements IComponent
 
     public function run()
     {
-        $this->server->tick(self::GET_TASKS_INTERVAL, function () {
-            $this->getTasks();
-        });
+        $cleanupWaitTime = self::CLEANUP_PERIOD;
 
-        $this->server->tick(self::CLEANUP_PERIOD, function () {
-            $this->storage->cleanup();
-        });
+        do {
+            if($cleanupWaitTime >= self::CLEANUP_PERIOD) {
+                $cleanupWaitTime=0;
+                $this->storage->cleanup();
+            }
+
+            $this->getTasks();
+            $cleanupWaitTime+=self::GET_TASKS_INTERVAL;
+            sleep(self::GET_TASKS_INTERVAL);
+        } while(!$this->isExit);
     }
 
     protected function getTasks() {
@@ -48,8 +53,9 @@ class Supplier implements IComponent
         }
 
         $taskList = $this->storage->get_active_workflow_ids();
-
-        if(count($taskList) > 0 ) {
+        $numTasks = count($taskList);
+        $this->storage->store_log("Supplier read $numTasks");
+        if($numTasks > 0 ) {
             $data = json_encode($taskList);
             $this->server->sendto(Engine::HOST, Engine::PORT, $data);
         }

@@ -2,13 +2,13 @@
 namespace Workflow;
 
 use Exception;
+use Workflow\Node\Base;
 use Workflow\Node\Validator;
 use Workflow\Node\INode;
 use Workflow\Storage\IStorage;
 use Workflow\Logger\WorkflowLogger;
 
 abstract class Workflow {
-//    extends Process {
     use WaitEvents;
 
     const CONTEXT_CALL_STACK = 'call_stack';
@@ -298,7 +298,7 @@ abstract class Workflow {
             return self::$compiled_nodes[get_class($this)][$this->current_node];
         }
 
-        if($this->current_node == INode::LAST_NODE) {
+        if($this->current_node === INode::LAST_NODE) {
             return null;
         }
 
@@ -372,6 +372,14 @@ abstract class Workflow {
         if($this->node_exists($node_name)) {
             $node_id=$this->get_node_id_by_name($node_name);
             $this->logger->debug("Switch to $node_name (id: $node_id) by GOTO_NODE call.");
+            /** @var Base $current_node */
+            $current_node = $this->get_current_node();
+            if($current_node === null) {
+                $this->logger->debug("Workflow finished");
+                return false;
+            }
+            $current_node->set_node_id_to_go($node_id);
+            // TODO check if we need line below
             $this->current_node = $node_id;
             return true;
         }

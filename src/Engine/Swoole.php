@@ -43,7 +43,8 @@ class Swoole extends AbstractEngine {
         $this->server->set([
             'worker_num' => 1,
             'task_worker_num' => self::NUM_TASK_WORKERS,
-            'task_enable_coroutine' => true
+            'task_enable_coroutine' => true,
+            'task_max_request' => 10
         ]);
 
         $this->server->on('receive', [$this, 'onRequest']);
@@ -92,11 +93,12 @@ class Swoole extends AbstractEngine {
 
     public function onWorkerstart(Server $server, int $worker_id) {
         $this->workerId = $worker_id;
+        $pid = getmypid();
 
         // We need new DB connection for each worker
 
         $this->storage=$this->storage->clone();
-
+        $this->storage->store_log("New worker started $worker_id: $pid");
         return true;
     }
 
@@ -110,8 +112,8 @@ class Swoole extends AbstractEngine {
         $params[IComponent::PARAM_STORAGE] = $this->storage;
         $params[IComponent::PARAM_SEVRER] = $server;
 
-        $task = new $class($params);
-        $task->run();
+        $action = new $class($params);
+        $action->run();
     }
 
     public function onFinish( ) {
@@ -136,6 +138,8 @@ class Swoole extends AbstractEngine {
     {
         $this->taskList = json_decode($data, true) ?? [];
         $freeWorkerNum = $this->getFreeWorkers();
+        $numTasks = count($this->taskList);
+        $this->storage->store_log("Main $numTasks recieved. $freeWorkerNum free workers.");
         while($freeWorkerNum-- > 1) {
             $this->executeTask();
         }

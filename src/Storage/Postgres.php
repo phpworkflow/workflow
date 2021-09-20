@@ -220,6 +220,7 @@ class Postgres implements IStorage
      */
     public function get_active_workflow_ids($type = '')
     {
+        /** @noinspection SqlConstantCondition */
         $sql = 'select distinct wf.workflow_id, wf.scheduled_at 
                     from workflow wf left join 
                         event e on wf.workflow_id = e.workflow_id
@@ -341,6 +342,7 @@ class Postgres implements IStorage
                 where workflow_id = :workflow_id
         ';
 
+        /** @noinspection NestedTernaryOperatorInspection */
         $status = $workflow->is_finished()
             ? IStorage::STATUS_FINISHED
             : ($unlock ? IStorage::STATUS_ACTIVE : null);
@@ -374,6 +376,7 @@ class Postgres implements IStorage
      */
     public function cleanup()
     {
+        $this->logger->warn("CLEANUP started");
         $sql = 'select workflow_id, "lock" from workflow where
                     status = :status
                     and "lock" <> \'\'
@@ -385,19 +388,28 @@ class Postgres implements IStorage
             'time_limit' => $this->get_execution_time_limit()
         ]);
 
+        $rows = $result->rowCount();
+        $this->logger->warn("CLEANUP: $rows workflows stuck");
         while ($row = $result->fetchNumeric()) {
             list($workflow_id, $lock) = $row;
             list($host, $pid) = $this->get_host_pid_from_lock_string($lock);
             if (self::process_exists($host, $pid)) {
-                $this->logger->warn("Workflow $workflow_id - is running for long time");
+                $this->logger->warn("CLEANUP: Workflow $workflow_id - is running for long time");
                 continue;
             }
 
-            $this->doSql('update workflow set lock = :lock, status=:status WHERE workflow_id = :workflow_id', [
+            $updRes = $this->doSql('update workflow set lock = :lock, status=:status WHERE workflow_id = :workflow_id', [
                 'lock' => '',
                 'status' => IStorage::STATUS_ACTIVE,
                 'workflow_id' => $workflow_id
             ]);
+
+            if($updRes->rowCount() > 0) {
+                $this->logger->info("CLEANUP: Workflow $workflow_id restarted");
+            }
+            else{
+                $this->logger->warn("CLEANUP: Workflow $workflow_id restart failed");
+            }
         }
     }
 

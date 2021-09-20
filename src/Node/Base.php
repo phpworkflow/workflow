@@ -12,6 +12,7 @@ abstract class Base implements INode
     protected $id;
     protected $name;
     protected $next_node_id = self::LAST_NODE;
+    protected $node_id_to_go;
 
     public function __construct(array $parameters)
     {
@@ -20,8 +21,17 @@ abstract class Base implements INode
         $this->next_node_id = $parameters[INode::P_NEXT_NODE];
     }
 
+    public function set_node_id_to_go($node_id) {
+        $this->node_id_to_go = $node_id;
+    }
+
     public function execute(Workflow $wf)
     {
+        if($this->node_id_to_go) {
+            $node_id = $this->node_id_to_go;
+            $this->node_id_to_go = null;
+            return $node_id;
+        }
         return $this->next_node_id;
     }
 

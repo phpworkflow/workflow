@@ -24,7 +24,7 @@ class NodeAction extends Base {
         $method = $this->method;
         $wf->$method($this->params);
 
-        return $this->next_node_id;
+        return parent::execute($wf);
     }
 
     public static function get_type_by_name($node_name) {

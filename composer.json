@@ -15,7 +15,7 @@
     "ext-json": "*",
     "ext-pdo": "*",
     "psr/log": "*",
-    "doctrine/dbal": "^2.9.0|^3.0"
+    "doctrine/dbal": "2.12.1"
   },
   "require-dev": {
     "phpunit/phpunit": "8.5",
