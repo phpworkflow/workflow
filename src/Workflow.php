@@ -51,8 +51,10 @@ abstract class Workflow {
     static protected $nodes_map=[];
 
     protected $error_limit=self::DEFAULT_ERROR_LIMIT;   // Maximum number of errors for workflow
-    public $error_info='';         // Used for debugging and error handling
 
+    public $error_info = '';         // Used for debugging and error handling
+
+    protected $is_error = false;
     /**
      * Basic initialization. parent::__construct should be executed in sub classes constructor
      *
@@ -315,28 +317,23 @@ abstract class Workflow {
 
     /**
      * @param Event[] $events array of Event objects
-     * @return bool
      */
     public function run(array $events=[]) {
 
         if(!$this->on_start()) {
-            return true;
+            $this->logger->info("on_start returns false. Skip workflow execution.");
+            return;
         }
 
         $iteration_counter = 0;
 
         try {
             do {
-                $event_arrived=false;
-
-                if(count($events) > 0) {
-                    $this->last_event=$this->handle_event(array_shift($events));
-                    $event_arrived=true;
-                }
+                $this->last_event=$this->handle_event(array_shift($events));
 
                 // Endless cycles protection
                 if(++$iteration_counter > self::MAX_ITERATIONS) {
-                    throw new Exception("Exceeded the maximum number of iterations (". self::MAX_ITERATIONS.")");
+                    throw new Exception("Exceeded the maximum number of iterations: ".self::MAX_ITERATIONS);
                 }
 
                 $this->_run();
@@ -345,19 +342,23 @@ abstract class Workflow {
 
                 $this->last_event=null;
 
-            } while ( $this->current_node != INode::LAST_NODE && $event_arrived);
+            } while ( $this->current_node != INode::LAST_NODE && (count($events) > 0));
 
             $this->on_finish();
-            return true;
         } catch (Exception $e) {
             $this->logger->warn("run Exception: " . $e->getMessage());
             $this->logger->warn($e->getTraceAsString());
             $this->error_info = "Exception: " . $e->getMessage();
-
-            return false;
+            $this->is_error = true;
         }
     }
 
+    /**
+     * @return bool
+     */
+    public function is_error() {
+        return $this->is_error;
+    }
 
     /**
      * Switch current process node

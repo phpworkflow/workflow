@@ -1,0 +1,10 @@
+<phpunit bootstrap="vendor/autoload.php">
+    <testsuites>
+        <testsuite name="PHP Workflow">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        <env name="WORKFLOW_DB_DSN" value="pgsql:user=dbuser;password=password;host=localhost;port=5432;dbname=workflow" force="true" />
+    </php>
+</phpunit>

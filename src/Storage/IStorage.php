@@ -1,21 +1,23 @@
 <?php
+
 namespace Workflow\Storage;
 
+use PDO;
 use Workflow\IFactory;
 use Workflow\Logger\ILogger;
 use Workflow\Workflow;
 use Workflow\Event;
-use Doctrine\DBAL\Connection;
 
-interface IStorage {
-    const STATUS_FINISHED='FINISHED';
-    const STATUS_ACTIVE='ACTIVE';
-    const STATUS_IN_PROGRESS='INPROGRESS';
-    const STATUS_FAILED='FAILED';
-    const STATUS_PROCESSED='PROCESSED';
-    const STATUS_NO_SUBSCRIBERS='NOSUBSCR';
+interface IStorage
+{
+    const STATUS_FINISHED = 'FINISHED';
+    const STATUS_ACTIVE = 'ACTIVE';
+    const STATUS_IN_PROGRESS = 'INPROGRESS';
+    const STATUS_FAILED = 'FAILED';
+    const STATUS_PROCESSED = 'PROCESSED';
+    const STATUS_NO_SUBSCRIBERS = 'NOSUBSCR';
 
-    const CLEANUP_TIME=3600;
+    const CLEANUP_TIME = 3600;
 
     /**
      * Returns the instance of Storage (IStorage interface)
@@ -25,13 +27,7 @@ interface IStorage {
      *
      * @return IStorage
      */
-    public static function instance(Connection $connection, ILogger $logger=null);
-
-
-    /**
-     * @return IStorage
-     */
-    public function clone():self;
+    public static function instance(PDO $connection, ILogger $logger = null);
 
     /**
      * Creates new workflow in the storage
@@ -39,7 +35,7 @@ interface IStorage {
      * @param bool $unique
      * @return boolean
      */
-    public function create_workflow(Workflow $workflow,  $unique=false);
+    public function create_workflow(Workflow $workflow, $unique = false);
 
     /**
      * Returns the list of workflows in status STATUS_ACTIVE
@@ -54,15 +50,16 @@ interface IStorage {
      *
      * @return Workflow $workflow
      */
-    public function get_workflow($id, $doLock=true);
+    public function get_workflow($id, $doLock = true);
 
     /**
      * Save workflow object to storage. Unlock by default
      * @param Workflow $workflow
+     * @param bool $unlock
      *
      * @return boolean
      */
-    public function save_workflow(Workflow $workflow, $unlock=true);
+    public function save_workflow(Workflow $workflow, $unlock = true);
 
     /**
      * Restore workflows with errors during execution
@@ -97,5 +94,5 @@ interface IStorage {
      * @param $workflow_id
      * @return void
      */
-    public function store_log($log_message, $workflow_id=0);
+    public function store_log($log_message, $workflow_id = 0);
 }

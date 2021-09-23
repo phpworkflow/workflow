@@ -2,14 +2,14 @@
 
 namespace Workflow\Storage;
 
+use PDO;
+use PDOStatement as Statement;
+
 use Workflow\Factory;
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Statement;
 use Exception;
 use LogicException;
 use RuntimeException;
 
-use Workflow\IFactory;
 use Workflow\Logger\Logger;
 use Workflow\Logger\ILogger;
 use Workflow\Subscription;
@@ -27,21 +27,20 @@ class Postgres implements IStorage
     /**
      * @var string
      */
-    private string $db_structure;
+    private $db_structure;
 
     /* @var ILogger $logger */
     private $logger;
 
-    /* @var Connection $db */
+    /* @var PDO $db */
     private $db;
 
     /**
-     * @param Connection $connection
+     * @param PDO $connection
      * @param ILogger|null $logger
-     *
      * @return IStorage
      */
-    public static function instance(Connection $connection, ILogger $logger = null): IStorage
+    public static function instance(PDO $connection, ILogger $logger = null): IStorage
     {
         if (self::$_storage === null) {
             self::$_storage = new Postgres($connection);
@@ -51,24 +50,10 @@ class Postgres implements IStorage
     }
 
     /**
-     * @return IStorage
-     * @throws \Doctrine\DBAL\Exception
-     */
-    public function clone():IStorage {
-        $connection = new Connection(
-            $this->db->getParams(),
-            $this->db->getDriver()
-        );
-        return new Postgres($connection);
-    }
-
-    /**
      * Postgres constructor.
-     * @param $databaseDSN - pgsql:host=localhost;port=5432;dbname=testdb;user=bruce;password=mypass
-     * @param IFactory|null $factory
-     * @param ILogger|null $logger
+     * @param PDO $connection
      */
-    protected function __construct(Connection $connection)
+    protected function __construct(PDO $connection)
     {
         $this->logger = Logger::instance();
         $this->db = $connection;
@@ -84,11 +69,11 @@ class Postgres implements IStorage
             $values = is_array($s->context_value) ? $s->context_value : [$s->context_value];
 
             foreach ($values as $v) {
-                $statement = $this->db->prepare("SELECT workflow_id from subscription
+                $statement = $this->db->prepare('SELECT workflow_id from subscription
                       WHERE workflow_id = :workflow_id AND
                        event_type = :event_type AND
                        context_key = :context_key AND
-                       context_value = :context_value");
+                       context_value = :context_value');
 
                 $statement->execute([
                     'workflow_id' => $workflow->get_id(),
@@ -159,7 +144,6 @@ class Postgres implements IStorage
     /**
      * @param Event $event
      * @return bool|int
-     * @throws \Doctrine\DBAL\Driver\Exception
      */
     public function create_event(Event $event)
     {
@@ -234,7 +218,7 @@ class Postgres implements IStorage
         $statement->execute([
             'status' => IStorage::STATUS_ACTIVE
         ]);
-        $column = $statement->fetchFirstColumn();
+        $column = $statement->fetchColumn(0);
         return $column ?: [];
     }
 
@@ -274,7 +258,7 @@ class Postgres implements IStorage
 
         $statement = $this->db->prepare($selectSql);
         $statement->execute($params);
-        $row = $statement->fetchAssociative();
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
 
         if (!isset($row['type'])) {
             return null;
@@ -347,13 +331,15 @@ class Postgres implements IStorage
             ? IStorage::STATUS_FINISHED
             : ($unlock ? IStorage::STATUS_ACTIVE : null);
 
+        $error_decrement = ($unlock && (!$workflow->is_error())) ? 1 : 0;
+
         $params = [
             'workflow_id' => $workflow->get_id(),
             'context' => $workflow->get_state(),
             'scheduled_at_ts' => $workflow->get_start_time(),
             'lock' => $unlock ? '' : null,
             'status' => $status,
-            'error_count' => $unlock ? 1 : null
+            'error_count' => $error_decrement
         ];
 
         return $this->doSql($sql, $params);
@@ -390,7 +376,7 @@ class Postgres implements IStorage
 
         $rows = $result->rowCount();
         $this->logger->warn("CLEANUP: $rows workflows stuck");
-        while ($row = $result->fetchNumeric()) {
+        while ($row = $result->fetch(PDO::FETCH_NUM)) {
             list($workflow_id, $lock) = $row;
             list($host, $pid) = $this->get_host_pid_from_lock_string($lock);
             if (self::process_exists($host, $pid)) {
@@ -436,7 +422,7 @@ class Postgres implements IStorage
         ]);
 
         $events = [];
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
             $e = new Event($row['type'], $row['context']);
             $e->setEventId($row['event_id']);
             $e->setWorkflowId($workflow_id);
