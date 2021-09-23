@@ -154,7 +154,7 @@ class Validator {
         while( false !== ($file = readdir($dir))) {
             if(preg_match('/^(Node\w+?)\.php/',$file,$match)) {
                 require_once($match[0]); // File name
-                self::$node_types[]='\\Workflow\\Node\\'.$match[1]; // Class name from file
+                self::$node_types[]=__NAMESPACE__.'\\'.$match[1]; // Class name from file
             }
         }
 

@@ -224,7 +224,11 @@ abstract class Workflow {
      * @param Event $event
      * @return Event
      */
-    private function handle_event(Event $event) {
+    private function handle_event(Event $event=null) {
+        if(!$event) {
+            return null;
+        }
+
         $event_type=$event->get_type();
         $this->logger->debug("Event $event_type arrived.");
 

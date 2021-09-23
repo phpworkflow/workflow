@@ -16,7 +16,7 @@ class NodeWait extends Base {
     /**
      * @var int
      */
-    protected int $timeout=0;
+    protected $timeout=0;
 
     /**
      * NodeWait constructor.
@@ -70,7 +70,8 @@ class NodeWait extends Base {
 
         $dt=new DateTime();
         $currentTS = $dt->getTimestamp();
-        [$h, $m] = $match;
+        $h=$match[1];
+        $m=$match[2];
         $dt->setTime($h,$m,0);
 
         if($dt->getTimestamp() > $currentTS) {
