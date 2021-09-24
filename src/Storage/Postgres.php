@@ -218,8 +218,13 @@ class Postgres implements IStorage
         $statement->execute([
             'status' => IStorage::STATUS_ACTIVE
         ]);
-        $column = $statement->fetchColumn(0);
-        return $column ?: [];
+
+        $column = [];
+        while (($workflow_id = $statement->fetchColumn()) > 0) {
+            $column[] = $workflow_id;
+        }
+
+        return $column;
     }
 
     /**
@@ -265,6 +270,10 @@ class Postgres implements IStorage
         }
 
         $workflow = (new Factory())->new_workflow($row['type']);
+        if(!$workflow) {
+            return null;
+        }
+
         $workflow->set_state($row['context']);
         $workflow->set_id($id);
 

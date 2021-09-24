@@ -38,6 +38,7 @@ class Simple extends AbstractEngine {
             // Lock and get workflow object
             $workflow=$this->storage->get_workflow($id);
             if($workflow === null) {
+                $this->logger->error("Workflow: $id was not created");
                 continue; // Workflow is locked
             }
 

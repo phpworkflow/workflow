@@ -13,7 +13,7 @@ class Factory implements IFactory {
             return new $type();
         }
 
-        throw new RuntimeException("Class $type not exists");
+        return null;
     }
 
     /**
