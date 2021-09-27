@@ -1,26 +1,22 @@
 <?php
 require '../vendor/autoload.php';
+
 use Workflow\Engine\Simple;
 use Workflow\Storage\Postgres;
 use Workflow\Logger\Logger;
 
-use Doctrine\DBAL\DriverManager;
+$dsn = $_ENV['WORKFLOW_DB_DSN'] ?? null;
+if ($dsn === null) {
+    throw new RuntimeException("Please set WORKFLOW_DB_DSN variable");
+}
 
-$connectionParams = array(
-    'dbname' => 'workflow',
-    'user' => 'dbuser',
-    'password' => 'dbpassword',
-    'host' => 'localhost',
-    'port' => 5432,
-    'driver' => 'pdo_pgsql',
-);
-$conn = DriverManager::getConnection($connectionParams);
+$conn = new PDO($dsn);
 
-$storage=Postgres::instance($conn);
+$storage = Postgres::instance($conn);
 
-$logger=Logger::instance($storage);
+$logger = Logger::instance($storage);
 
-$engine=Simple::instance($storage, $logger);
+$engine = Simple::instance($storage, $logger);
 
-$engine->set_params(10,3); // 10 cycles of workflows execution, 3 sec between cycles
+$engine->set_params(10, 3); // 10 cycles of workflows execution, 3 sec between cycles
 $engine->run();

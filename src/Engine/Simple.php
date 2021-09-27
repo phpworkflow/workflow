@@ -1,4 +1,6 @@
 <?php
+declare(ticks=1);
+
 namespace Workflow\Engine;
 
 use Workflow\Logger\ILogger;
@@ -14,12 +16,15 @@ class Simple extends AbstractEngine {
     {
         parent::__construct($storage, $logger);
         if(!function_exists('pcntl_signal')) {
-            error_log("Graceful exit not supported");
+            $this->logger->info("Graceful exit not supported");
             return;
         }
-
-        pcntl_signal(SIGTERM, [$this, "sigHandler"]);
+        
+        $this->logger->info("Graceful exit ON");
+        pcntl_async_signals(TRUE);
         pcntl_signal(SIGHUP,  [$this, "sigHandler"]);
+        pcntl_signal(SIGINT, [$this, "sigHandler"]);
+        pcntl_signal(SIGTERM, [$this, "sigHandler"]);
     }
 
     public function run() {
@@ -69,9 +74,9 @@ class Simple extends AbstractEngine {
         $this->sleep_time=$sleep_time;
     }
 
-    protected function sigHandler($signo)
+    public function sigHandler($signo)
     {
-        error_log("Signal $signo arrived. Exiting...");
+        $this->logger->info("Signal $signo. Exiting...");
         $this->exit = true;
     }
 }
