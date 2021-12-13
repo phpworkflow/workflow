@@ -15,15 +15,15 @@ class Logger implements ILogger
     /**
      * @var string
      */
-    protected string $log_channel;
+    protected $log_channel;
 
     /** @var IStorage $storage */
-    private static ?IStorage $storage = null;
+    private static $storage = null;
 
     /**
      * @var Logger
      */
-    private static ?Logger $logger = null;
+    private static $logger = null;
 
     /**
      * @param IStorage|null $storage
