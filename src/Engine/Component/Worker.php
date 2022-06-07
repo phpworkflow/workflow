@@ -45,8 +45,10 @@ class Worker implements IComponent
 
         if(!$workflow->is_finished()) {
             // Function is executed after successful event processing
-            $workflow->set_sync_callback(function(Workflow $workflow, Event $event) {
-                $this->storage->close_event($event);
+            $workflow->set_sync_callback(function(Workflow $workflow, Event $event = null) {
+                if($event !== null) {
+                    $this->storage->close_event($event);
+                }
                 $this->storage->save_workflow($workflow, false);
             });
 

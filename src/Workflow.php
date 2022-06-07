@@ -493,10 +493,10 @@ abstract class Workflow {
      * Save state of the workflow after processing of the event
      */
     protected function sync() {
-        if(!is_callable($this->sync_callback)
-            || empty($this->last_event)) {
+        if(!is_callable($this->sync_callback)) {
             return;
         }
+
         call_user_func($this->sync_callback, $this, $this->last_event);
     }
 
