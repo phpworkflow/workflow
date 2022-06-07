@@ -1,14 +1,15 @@
 <?php
 namespace Workflow;
 
-use Exception;
 use Workflow\Node\Base;
+use Exception;
 use Workflow\Node\Validator;
 use Workflow\Node\INode;
 use Workflow\Storage\IStorage;
 use Workflow\Logger\WorkflowLogger;
 
 abstract class Workflow {
+//    extends Process {
     use WaitEvents;
 
     const CONTEXT_CALL_STACK = 'call_stack';
@@ -25,6 +26,9 @@ abstract class Workflow {
     const MAX_ITERATIONS = 100;
 
     const DEFAULT_ERROR_LIMIT = 3;
+
+    // Workflow pause after exception, seconds
+    const PAUSE_AFTER_EXCEPTION = 60;
 
     protected $workflow_id=0;
     /* @var WorkflowLogger $logger */
@@ -52,9 +56,11 @@ abstract class Workflow {
 
     protected $error_limit=self::DEFAULT_ERROR_LIMIT;   // Maximum number of errors for workflow
 
-    public $error_info = '';         // Used for debugging and error handling
+    /**
+     * @var string
+     */
+    protected $error_info='';         // Used for debugging and error handling
 
-    protected $is_error = false;
     /**
      * Basic initialization. parent::__construct should be executed in sub classes constructor
      *
@@ -224,11 +230,7 @@ abstract class Workflow {
      * @param Event $event
      * @return Event
      */
-    private function handle_event(Event $event=null) {
-        if(!$event) {
-            return null;
-        }
-
+    private function handle_event(Event $event) {
         $event_type=$event->get_type();
         $this->logger->debug("Event $event_type arrived.");
 
@@ -271,7 +273,7 @@ abstract class Workflow {
                 return;
             }
 
-            $this->logger->debug("--- ".get_class($current_node).": ".$current_node->get_name());
+            $this->logger->debug("--- ".get_class($current_node)."($current_node): ".$current_node->get_name());
 
             $next_node_id=$current_node->execute($this);
 
@@ -321,23 +323,29 @@ abstract class Workflow {
 
     /**
      * @param Event[] $events array of Event objects
+     * @return bool
      */
     public function run(array $events=[]) {
 
         if(!$this->on_start()) {
             $this->logger->info("on_start returns false. Skip workflow execution.");
-            return;
+            return true;
         }
 
         $iteration_counter = 0;
 
         try {
             do {
-                $this->last_event=$this->handle_event(array_shift($events));
+                $event_arrived=false;
+
+                if(count($events) > 0) {
+                    $this->last_event=$this->handle_event(array_shift($events));
+                    $event_arrived=true;
+                }
 
                 // Endless cycles protection
                 if(++$iteration_counter > self::MAX_ITERATIONS) {
-                    throw new Exception("Exceeded the maximum number of iterations: ".self::MAX_ITERATIONS);
+                    throw new Exception("Exceeded the maximum number of iterations (". self::MAX_ITERATIONS.")");
                 }
 
                 $this->_run();
@@ -346,23 +354,21 @@ abstract class Workflow {
 
                 $this->last_event=null;
 
-            } while ( $this->current_node != INode::LAST_NODE && (count($events) > 0));
+            } while ( $this->current_node != INode::LAST_NODE && $event_arrived);
 
             $this->on_finish();
+            return true;
         } catch (Exception $e) {
             $this->logger->warn("run Exception: " . $e->getMessage());
             $this->logger->warn($e->getTraceAsString());
             $this->error_info = "Exception: " . $e->getMessage();
-            $this->is_error = true;
+
+            $this->set_exec_time(time() + $this->get_pause_after_exception());
+
+            return false;
         }
     }
 
-    /**
-     * @return bool
-     */
-    public function is_error() {
-        return $this->is_error;
-    }
 
     /**
      * Switch current process node
@@ -504,8 +510,9 @@ abstract class Workflow {
      * Put process to execution queue
      */
     public function put_to_storage(IStorage $storage, $unique = false) {
-        $storage->create_workflow($this, $unique);
-        return $this->workflow_id;
+        return $storage->create_workflow($this, $unique)
+            ? $this->workflow_id
+            : 0;
     }
 
     /**
@@ -536,11 +543,24 @@ abstract class Workflow {
         return true;
     }
 
-
     /*
      * Is executed after workflow main flow
      */
     public function on_finish() {
+    }
+
+    /**
+     * @return int
+     */
+    protected function get_pause_after_exception() {
+        return self::PAUSE_AFTER_EXCEPTION;
+    }
+
+    /**
+     * @return string
+     */
+    public function get_error_info() {
+        return $this->error_info;
     }
 
     /**
@@ -551,5 +571,4 @@ abstract class Workflow {
     {
         $this->logger->set_log_channel($logChannel);
     }
-
 }

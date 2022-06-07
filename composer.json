@@ -14,7 +14,6 @@
     "php": "^7.0",
     "ext-json": "*",
     "ext-pdo": "*",
-    "ext-pcntl": "*",
     "psr/log": "*"
   },
   "require-dev": {
