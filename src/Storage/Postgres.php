@@ -210,7 +210,7 @@ class Postgres implements IStorage
                         event e on wf.workflow_id = e.workflow_id
             where 1=1
                 and (e.status = :status or wf.status = :status)
-                and (wf.scheduled_at <= current_timestamp or e.started_at <= current_timestamp )
+                and (wf.scheduled_at <= current_timestamp or e.created_at <= current_timestamp )
             order by wf.scheduled_at
                 limit 100';
 
