@@ -557,6 +557,13 @@ abstract class Workflow {
     }
 
     /**
+     * @return bool
+     */
+    public function is_error() {
+        return $this->error_info !== '';
+    }
+
+    /**
      * @return string
      */
     public function get_error_info() {
