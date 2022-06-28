@@ -15,7 +15,7 @@ class SuccessFlowTest extends TestCase {
     }
 
     function test_success() {
-        /** @var \Workflow\Workflow $wf */
+        /** @var GoodsSaleWorkflow $wf */
         $wf=$this->workflow;
         $wf->run();
         self::assertEquals('goto_select_goods', $wf->get_current_node_name());
@@ -32,8 +32,14 @@ class SuccessFlowTest extends TestCase {
         }
 
         self::assertEquals('goto_if_customer_pay_for_goods', $wf->get_current_node_name());
+        self::assertEmpty( $wf->get_value(GoodsSaleWorkflow::CTX_SOME_EVENT));
+
         $wf->set_exec_time(0);
         $wf->run();
+        $event=new Event(GoodsSaleWorkflow::EVENT_CONTEXT_MODIFIER,[GoodsSaleWorkflow::CONTEXT_VALUE_NAME => 135]);
+        $wf->run([$event]);
+        self::assertEquals(135, $wf->get_value(GoodsSaleWorkflow::CTX_SOME_EVENT));
+
         $wf->run();
         self::assertEquals('goto_if_customer_pay_for_goods', $wf->get_current_node_name());
 
