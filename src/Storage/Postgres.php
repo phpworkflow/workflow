@@ -409,7 +409,7 @@ class Postgres implements IStorage
         $result = $this->doSql("select hostname from host", []);
 
         $hosts = [];
-        while ( list($hostname) = $result->fetchNumeric()) {
+        while ( list($hostname) = $result->fetch(PDO::FETCH_NUM)) {
             $hosts[] = $hostname;
         }
         return $hosts;
