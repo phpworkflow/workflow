@@ -41,6 +41,8 @@ CREATE TABLE subscription (
 CREATE TABLE log (
   id bigserial NOT NULL PRIMARY KEY,
   workflow_id	BIGINT NOT NULL,
+  host varchar(32) default '',
+  pid int default 0,
   created_at	timestamp default current_timestamp,
   log_text	TEXT NOT NULL
 );

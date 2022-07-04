@@ -502,9 +502,11 @@ class Postgres implements IStorage
      */
     public function store_log($log_message, $workflow_id = 0)
     {
-        $this->doSql('insert into log (workflow_id, log_text) values (:workflow_id, :log_text)', [
+        $this->doSql('insert into log (workflow_id, log_text, pid, host) values (:workflow_id, :log_text, :pid, :host)', [
             'workflow_id' => $workflow_id,
-            'log_text' => $log_message
+            'log_text' => $log_message,
+            'pid' => getmypid() ?: 0,
+            'host' => md5(gethostname())
         ]);
     }
 
