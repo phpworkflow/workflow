@@ -10,9 +10,7 @@ if ($dsn === null) {
     throw new RuntimeException("Please set WORKFLOW_DB_DSN variable");
 }
 
-$conn = new PDO($dsn);
-
-$storage = Postgres::instance($conn);
+$storage = Postgres::instance($dsn);
 
 $logger = Logger::instance($storage);
 

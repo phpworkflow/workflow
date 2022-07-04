@@ -5,11 +5,11 @@ namespace Workflow\Storage;
 use PDO;
 use PDOStatement as Statement;
 
-use Workflow\Factory;
 use Exception;
 use LogicException;
 use RuntimeException;
 
+use Workflow\Factory;
 use Workflow\Logger\Logger;
 use Workflow\Logger\ILogger;
 use Workflow\Subscription;
@@ -21,8 +21,15 @@ class Postgres implements IStorage
 {
     use SystemUtils;
 
+    const HOST_DELETE_DELAY = 300;
+
     /* @var IStorage $_storage */
     private static $_storage = null;
+
+    /**
+     * @var string
+     */
+    private static $dsn = '';
 
     /**
      * @var string
@@ -35,18 +42,36 @@ class Postgres implements IStorage
     /* @var PDO $db */
     private $db;
 
+
     /**
      * @param PDO $connection
      * @param ILogger|null $logger
      * @return IStorage
      */
-    public static function instance(PDO $connection, ILogger $logger = null): IStorage
+    public static function instance(string $dsn, ILogger $logger = null): IStorage
     {
         if (self::$_storage === null) {
-            self::$_storage = new Postgres($connection);
+            $connection = new PDO($dsn, null, null,
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            self::$dsn = $dsn;
+            self::$_storage = self::createInstance($dsn);
         }
 
         return self::$_storage;
+    }
+
+    private static function createInstance(string $dsn): IStorage {
+        $connection = new PDO($dsn, null, null,
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        return new Postgres($connection);
+    }
+
+    public function clone(): IStorage {
+        if(self::$dsn === '') {
+            throw new LogicException("Absent connection parameters");
+        }
+
+        return self::createInstance(self::$dsn);
     }
 
     /**
@@ -365,12 +390,41 @@ class Postgres implements IStorage
         ]);
     }
 
+    private function update_hosts() {
+        $sql = 'INSERT INTO host ( hostname ) VALUES (:hostname)
+                    ON CONFLICT (hostname)
+                        DO UPDATE SET updated_at = now()';
+
+        $this->doSql($sql, [
+            'hostname' => gethostname()
+        ]);
+
+        $this->doSql(
+            sprintf("delete from host where updated_at < now() - interval '%d seconds'",
+            self::HOST_DELETE_DELAY), []
+        );
+    }
+
+    private function get_active_hosts() {
+        $result = $this->doSql("select hostname from host", []);
+
+        $hosts = [];
+        while ( list($hostname) = $result->fetchNumeric()) {
+            $hosts[] = $hostname;
+        }
+        return $hosts;
+    }
+
     /**
      * Restore workflows with errors during execution
      * @return void
      */
     public function cleanup()
     {
+        $this->update_hosts();
+
+        $active_hosts = $this->get_active_hosts();
+
         $this->logger->warn("CLEANUP started");
         $sql = 'select workflow_id, "lock" from workflow where
                     status = :status
@@ -388,7 +442,7 @@ class Postgres implements IStorage
         while ($row = $result->fetch(PDO::FETCH_NUM)) {
             list($workflow_id, $lock) = $row;
             list($host, $pid) = $this->get_host_pid_from_lock_string($lock);
-            if (self::process_exists($host, $pid)) {
+            if (self::process_exists($host, $pid, $active_hosts)) {
                 $this->logger->warn("CLEANUP: Workflow $workflow_id - is running for long time");
                 continue;
             }

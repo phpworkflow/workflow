@@ -54,8 +54,9 @@ class Supplier implements IComponent
 
         $taskList = $this->storage->get_active_workflow_ids();
         $numTasks = count($taskList);
-        $this->storage->store_log("Supplier read $numTasks");
+
         if($numTasks > 0 ) {
+            $this->storage->store_log("Supplier read $numTasks");
             $data = json_encode($taskList);
             $this->server->sendto(Engine::HOST, Engine::PORT, $data);
         }

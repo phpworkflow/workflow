@@ -16,13 +16,17 @@ trait SystemUtils {
     private static $win_list_time=0;
 
     /**
-     * Checks if system process exists
-     * @param int $pid
-     * @param string $hostname
+     * @param $hostname
+     * @param $pid
+     * @param array $active_hosts
      *
      * @return bool
      */
-    public static function process_exists($hostname, $pid) {
+    public static function process_exists($hostname, $pid, $active_hosts = []) {
+
+        if(!in_array($hostname, $active_hosts, true)) {
+            return false;
+        }
 
         // Check processes only on current host
         if ($pid > 0 && $hostname != gethostname()) {

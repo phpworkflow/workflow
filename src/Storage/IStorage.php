@@ -21,13 +21,12 @@ interface IStorage
 
     /**
      * Returns the instance of Storage (IStorage interface)
-     * Connection $connection
-     * @param IFactory $factory
+     * @param string $dsn
      * @param ILogger $logger
      *
      * @return IStorage
      */
-    public static function instance(PDO $connection, ILogger $logger = null);
+    public static function instance(string $dsn, ILogger $logger = null);
 
     /**
      * Creates new workflow in the storage

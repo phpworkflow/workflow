@@ -42,7 +42,7 @@ class Swoole extends AbstractEngine {
 
         $this->server->set([
             'worker_num' => 1,
-            'task_worker_num' => self::NUM_TASK_WORKERS,
+            'task_worker_num' => $this->getNumWorkers(),
             'task_enable_coroutine' => true,
             'task_max_request' => 10
         ]);
@@ -56,6 +56,13 @@ class Swoole extends AbstractEngine {
         $this->server->on('shutdown', [$this, 'onShutdown']);
 
         parent::__construct($storage, $logger);
+    }
+
+    /**
+     * @return int
+     */
+    protected function getNumWorkers(): int {
+        return (int)($_ENV['NUM_TASK_WORKERS'] ?? 0) ?: self::NUM_TASK_WORKERS;
     }
 
     public function run() {
@@ -74,7 +81,8 @@ class Swoole extends AbstractEngine {
 
     protected function executeTask() {
         if(count($this->taskList) > 0) {
-            $this->server->task([Worker::class,[
+            $this->storage->store_log("Server sent task ID {$this->taskList[0]}");
+            $this->server->task([Worker::class, [
                 Supplier::PARAM_TASK_ID => array_shift($this->taskList)
             ]]);
         }
@@ -96,7 +104,7 @@ class Swoole extends AbstractEngine {
         $pid = getmypid();
 
         // We need new DB connection for each worker
-
+        // TODO add new connection for another DB if it used
         $this->storage=$this->storage->clone();
         $this->storage->store_log("New worker started $worker_id: $pid");
         return true;
@@ -132,7 +140,7 @@ class Swoole extends AbstractEngine {
 
     /**
      * @param TaskServer $server
-     * @param Response $data
+     * @param string $data
      */
     public function onPacket(Server $server, $data)
     {
@@ -140,6 +148,7 @@ class Swoole extends AbstractEngine {
         $freeWorkerNum = $this->getFreeWorkers();
         $numTasks = count($this->taskList);
         $this->storage->store_log("Main $numTasks recieved. $freeWorkerNum free workers.");
+        $this->storage->store_log("Messsage $data");
         while($freeWorkerNum-- > 1) {
             $this->executeTask();
         }

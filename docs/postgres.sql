@@ -45,6 +45,16 @@ CREATE TABLE log (
   log_text	TEXT NOT NULL
 );
 
+create table host
+(
+    hostname varchar(128) not null
+        constraint host_pk
+        primary key,
+    updated_at timestamp default now()
+);
+
+comment on table host is 'List of hosts (containers) which process workflows';
+
 CREATE INDEX subscr_uni_ind ON subscription (event_type, context_key, context_value, status, workflow_id);
 CREATE INDEX log_ind ON log (workflow_id , created_at );
 CREATE INDEX workflow_queue_ind ON workflow (scheduled_at, status );

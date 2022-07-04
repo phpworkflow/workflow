@@ -354,6 +354,7 @@ abstract class Workflow
      */
     public function run(array $events = [])
     {
+        $this->error_info = '';
 
         if (!$this->on_start()) {
             $this->logger->info("on_start returns false. Skip workflow execution.");
