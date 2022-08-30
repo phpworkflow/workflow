@@ -1,11 +1,11 @@
 <?php
-namespace Workflow\Integration;
+namespace Workflow;
 
 use PHPUnit\Framework\TestCase;
 use Workflow\Node\INode;
 use Workflow\Example\CommandsQueue;
 
-class CommandsQueueTest extends TestCase {
+class CommandQueueTest extends TestCase {
 
     function test_simple() {
         $wf=new CommandsQueue();

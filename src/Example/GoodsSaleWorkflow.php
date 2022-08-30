@@ -22,6 +22,8 @@ class GoodsSaleWorkflow extends Workflow
 
     const WF_KEY_CUSTOMER = 'customer_id';
 
+    const WF_KEY_ORDER = 'order_id';
+
     public function __construct()
     {
         $process_nodes = [
@@ -78,7 +80,7 @@ class GoodsSaleWorkflow extends Workflow
                 } ]
         ];
 
-        parent::__construct($process_nodes, $events_map);
+        parent::__construct($process_nodes, $events_map, [self::WF_KEY_CUSTOMER]);
         $this->logger->set_log_channel(ILogger::LOG_CONSOLE);
     }
 

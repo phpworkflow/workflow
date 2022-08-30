@@ -38,6 +38,12 @@ class Simple extends AbstractEngine {
         $this->logger->debug("Start");
         $wf_ids=$this->storage->get_active_workflow_ids();
 
+        $numTasks = count($wf_ids);
+
+        if($numTasks > 0 ) {
+            $this->storage->store_log("Read $numTasks task(s)");
+        }
+
         foreach($wf_ids as $id) {
             /* @var Workflow $workflow */
             // Lock and get workflow object

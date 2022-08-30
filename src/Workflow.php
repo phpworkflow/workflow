@@ -1,9 +1,9 @@
 <?php
 
 namespace Workflow;
-
-use Workflow\Node\Base;
 use Exception;
+use LogicException;
+use Workflow\Node\Base;
 use Workflow\Node\Validator;
 use Workflow\Node\INode;
 use Workflow\Storage\IStorage;
@@ -52,7 +52,8 @@ abstract class Workflow
     /** @var callable $sync_callback */
     private $sync_callback = null;
 
-    static protected $events_map = [];
+    protected $events_map = [];
+
     static protected $compiled_nodes = [];
     static protected $nodes_map = [];
 
@@ -63,12 +64,14 @@ abstract class Workflow
      */
     protected $error_info = '';         // Used for debugging and error handling
 
+    protected $unique_properties =[];
+
     /**
      * Basic initialization. parent::__construct should be executed in sub classes constructor
      *
      * @param array $process_nodes
      */
-    public function __construct(array $process_nodes = [], array $events_map = [])
+    public function __construct(array $process_nodes = [], array $events_map = [], array $unique_properties = [])
     {
 
         $class = get_class($this);
@@ -77,10 +80,6 @@ abstract class Workflow
             $validator = new Validator($process_nodes, $this);
             self::$compiled_nodes[$class] = $validator->get_prepared_nodes();
             static::prepare_nodes_map($class);
-        }
-
-        if (!isset(self::$events_map[$class])) {
-            self::$events_map[$class] = $events_map;
         }
 
         $this->current_node = array_values(self::$compiled_nodes[$class])[0]->get_id();
@@ -92,7 +91,8 @@ abstract class Workflow
                 $this->start_wait_for($event_type);
             }
         }
-
+        $this->events_map = $events_map;
+        $this->unique_properties = $unique_properties;
         $this->logger = WorkflowLogger::create($this->workflow_id);
     }
 
@@ -116,6 +116,31 @@ abstract class Workflow
         return $this->workflow_id;
     }
 
+    /**
+     * @return array
+     */
+    public function get_uniqueness() {
+        if(empty($this->unique_properties)) {
+            throw new LogicException('Please specify $unique_properties parameter for workflow');
+        }
+
+        $keys = [];
+
+        foreach ($this->unique_properties as $property) {
+            $value = $this->get_context($property);
+            if(!is_scalar($value)) {
+                throw new LogicException("Content of $property should be scalar value");
+            }
+            $keys[$property] = $value;
+        }
+
+        ksort($keys);
+
+        return [
+            json_encode(array_keys($keys)),
+            json_encode(array_values($keys))
+        ];
+    }
 
     public function set_id($workflowId)
     {
@@ -177,7 +202,7 @@ abstract class Workflow
     {
         $this->workflow_context->set($key, $value, Context::NAMESPACE_USER);
 
-        foreach (self::$events_map[get_class($this)] as $event_type => $params) {
+        foreach ($this->events_map as $event_type => $params) {
             if (!isset($params[self::EVENT_FILTER])) {
                 continue;
             }
@@ -208,7 +233,7 @@ abstract class Workflow
             return $result; // Subscription was not changed
         }
 
-        foreach (self::$events_map[get_class($this)] as $event_type => $params) {
+        foreach ($this->events_map as $event_type => $params) {
             $s = new Subscription($event_type);
 
             if (empty($params[self::EVENT_FILTER])) {
@@ -252,8 +277,7 @@ abstract class Workflow
         $event_type = $event->get_type();
         $this->logger->debug("Event $event_type arrived.");
 
-        $class = get_class($this);
-        if (!isset(self::$events_map[$class][$event_type])) {
+        if (!isset($this->events_map[$event_type])) {
             $this->logger->debug(" !!! Event '$event_type' not presents in event map.");
             return null;
         }
@@ -265,7 +289,7 @@ abstract class Workflow
 
         $this->set_exec_time();
 
-        $event_target = self::$events_map[$class][$event_type][self::EVENT_TARGET];
+        $event_target = $this->events_map[$event_type][self::EVENT_TARGET];
         if (is_callable($event_target)) {
             call_user_func($event_target, $event);
         } else {

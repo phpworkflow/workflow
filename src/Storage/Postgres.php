@@ -21,6 +21,12 @@ class Postgres implements IStorage
 {
     use SystemUtils;
 
+    const ENV_DEBUG_WF_SQL = 'DEBUG_WF_SQL';
+
+    const UNIQUENESS = 'UNIQUENESS';
+
+    const TASK_LIST_SIZE_LIMIT = 100;
+
     const HOST_DELETE_DELAY = 300;
 
     /* @var IStorage $_storage */
@@ -42,7 +48,6 @@ class Postgres implements IStorage
     /* @var PDO $db */
     private $db;
 
-
     /**
      * @param PDO $connection
      * @param ILogger|null $logger
@@ -60,14 +65,16 @@ class Postgres implements IStorage
         return self::$_storage;
     }
 
-    private static function createInstance(string $dsn): IStorage {
+    private static function createInstance(string $dsn): IStorage
+    {
         $connection = new PDO($dsn, null, null,
             [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         return new Postgres($connection);
     }
 
-    public function clone(): IStorage {
-        if(self::$dsn === '') {
+    public function clone(): IStorage
+    {
+        if (self::$dsn === '') {
             throw new LogicException("Absent connection parameters");
         }
 
@@ -82,6 +89,7 @@ class Postgres implements IStorage
     {
         $this->logger = Logger::instance();
         $this->db = $connection;
+        $this->debug = (getenv(self::ENV_DEBUG_WF_SQL) !== false);
     }
 
     private function createSubscription(Workflow $workflow, $is_new = true)
@@ -94,13 +102,13 @@ class Postgres implements IStorage
             $values = is_array($s->context_value) ? $s->context_value : [$s->context_value];
 
             foreach ($values as $v) {
-                $statement = $this->db->prepare('SELECT workflow_id from subscription
+                $sql = 'SELECT workflow_id from subscription
                       WHERE workflow_id = :workflow_id AND
                        event_type = :event_type AND
                        context_key = :context_key AND
-                       context_value = :context_value');
+                       context_value = :context_value';
 
-                $statement->execute([
+                $statement = $this->doSql($sql, [
                     'workflow_id' => $workflow->get_id(),
                     'event_type' => $s->event_type,
                     'context_key' => $s->context_key,
@@ -114,11 +122,11 @@ class Postgres implements IStorage
                     continue;
                 }
 
-                $statement = $this->db->prepare("INSERT INTO subscription (
+                $sql =  'INSERT INTO subscription (
                           status, event_type, context_key, context_value, workflow_id)
-                    VALUES (:status, :event_type, :context_key, :context_value, :workflow_id)");
+                    VALUES (:status, :event_type, :context_key, :context_value, :workflow_id)';
 
-                $statement->execute([
+                $this->doSql($sql, [
                     'status' => IStorage::STATUS_ACTIVE,
                     'event_type' => $s->event_type,
                     'context_key' => $s->context_key,
@@ -130,22 +138,48 @@ class Postgres implements IStorage
     }
 
     /**
+     * Checks if workflow with unique properties exists
      * @param Workflow $workflow
-     * @param false $unique
      *
      * @return bool
-     * TODO implement usage of $unique - workflow of such type should be only one
+     */
+    private function workflowExists($key, $value) {
+        $result = $this->doSql('select 1 from subscription 
+                where status =:status
+                  and event_type = :uniqueness 
+                  and context_key = :key 
+                  and context_value = :value',
+            [
+                'status' => IStorage::STATUS_ACTIVE,
+                'uniqueness' => self::UNIQUENESS,
+                'key' => $key,
+                'value' => $value
+            ]);
+
+        return $result->rowCount() > 0;
+    }
+
+    /**
+     * @param Workflow $workflow
+     * @param false $unique
+     * @return bool
      */
     public function create_workflow(Workflow $workflow, $unique = false)
     {
 
+        if($unique) {
+            list($key, $value) = $workflow->get_uniqueness();
+            if($this->workflowExists($key, $value)) {
+                return false;
+            }
+        }
+
         try {
-
             $this->db->beginTransaction();
-            $statement = $this->db->prepare("INSERT INTO workflow (type, context, scheduled_at, finished_at, status)
-                VALUES (:type, :context, to_timestamp(:scheduled_at_ts), null, :status)");
+            $sql = 'INSERT INTO workflow (type, context, scheduled_at, finished_at, status)
+                VALUES (:type, :context, to_timestamp(:scheduled_at_ts), null, :status)';
 
-            $statement->execute([
+            $this->doSql($sql, [
                 'type' => $workflow->get_type(),
                 'context' => $workflow->get_state(),
                 'scheduled_at_ts' => $workflow->get_start_time(),
@@ -156,6 +190,73 @@ class Postgres implements IStorage
             $workflow->set_id($workflow_id);
 
             $this->createSubscription($workflow);
+
+            if($unique) {
+                $this->doSql('insert into subscription (workflow_id, status, event_type, context_key, context_value) 
+                    values (:workflow_id, :status, :event_type, :context_key, :context_value)',
+                    [
+                        'workflow_id' => $workflow_id,
+                        'status' => IStorage::STATUS_ACTIVE,
+                        'event_type' => self::UNIQUENESS,
+                        'context_key' => $key,
+                        'context_value' => $value
+                    ]);
+            }
+
+            $this->db->commit();
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            $this->logger->error($e->getMessage());
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @param $workflow_id
+     * @return bool
+     */
+    public function finish_workflow($workflow_id)
+    {
+        $workflow = $this->get_workflow($workflow_id);
+
+        if($workflow === null) {
+            return false;
+        }
+
+        try {
+
+            $this->db->beginTransaction();
+
+            $sql = 'update event set finished_at = current_timestamp, status = :status 
+                where workflow_id = :workflow_id';
+
+            $this->doSql($sql, [
+                'workflow_id' => $workflow_id,
+                'status' => IStorage::STATUS_PROCESSED
+            ]);
+
+            $sql = 'update subscription set status = :status 
+                where workflow_id = :workflow_id';
+
+            $this->doSql($sql, [
+                'workflow_id' => $workflow_id,
+                'status' => IStorage::STATUS_FINISHED
+            ]);
+
+            $sql = 'update workflow set 
+                    finished_at = current_timestamp, 
+                    status = :status,
+                    lock = :lock
+                where workflow_id = :workflow_id';
+
+            $this->doSql($sql, [
+                'workflow_id' => $workflow_id,
+                'status' => IStorage::STATUS_FINISHED,
+                'lock' => ''
+            ]);
+
             $this->db->commit();
         } catch (Exception $e) {
             $this->db->rollBack();
@@ -174,9 +275,10 @@ class Postgres implements IStorage
     {
 
         $sql = "insert into event (type, context, status, workflow_id)
-                select cast(:type as text), :context, :status, workflow_id
+                select cast(:type as text), :context, :event_status, workflow_id
                     from subscription
-                        where event_type = :type
+                        where event_type = :type    
+                            and status = :status
                             and ((context_key = :context_key and context_value = :context_value)
                                 or (context_key = :empty_value and context_value  = :empty_value))
                 limit 1000
@@ -189,26 +291,22 @@ class Postgres implements IStorage
         try {
             $countEvents = 0;
             foreach ($keyData as $context_key => $context_value) {
-                $statement = $this->db->prepare($sql);
-                $result = $statement->execute([
+                $statement = $this->doSql($sql, [
                     'type' => $event->get_type(),
                     'context' => $event->getContext(),
+                    'event_status' => IStorage::STATUS_ACTIVE,
                     'status' => IStorage::STATUS_ACTIVE,
                     'context_key' => $context_key,
                     'context_value' => $context_value,
                     'empty_value' => Subscription::EMPTY
                 ]);
-
-                if (!$result) {
-                    $this->logger->error(json_encode($statement->errorInfo()));
-                }
                 $countEvents += $statement->rowCount();
             }
 
             if ($countEvents === 0) {
                 $sql = 'insert into event (type, status, context, workflow_id) values (:type, :status, :context, 0)';
-                $statement = $this->db->prepare($sql);
-                $statement->execute([
+
+                $this->doSql($sql, [
                     'type' => $event->get_type(),
                     'status' => IStorage::STATUS_NO_SUBSCRIBERS,
                     'context' => $event->getContext()
@@ -237,11 +335,11 @@ class Postgres implements IStorage
                 and (e.status = :status or wf.status = :status)
                 and (wf.scheduled_at <= current_timestamp or e.created_at <= current_timestamp )
             order by wf.scheduled_at
-                limit 100';
+                limit :limit';
 
-        $statement = $this->db->prepare($sql);
-        $statement->execute([
-            'status' => IStorage::STATUS_ACTIVE
+        $statement = $this->doSql($sql, [
+            'status' => IStorage::STATUS_ACTIVE,
+            'limit' => self::TASK_LIST_SIZE_LIMIT
         ]);
 
         $column = [];
@@ -286,8 +384,8 @@ class Postgres implements IStorage
             $params['lock_id'] = $lockId;
         }
 
-        $statement = $this->db->prepare($selectSql);
-        $statement->execute($params);
+        $statement = $this->doSql($selectSql, $params);
+
         $row = $statement->fetch(PDO::FETCH_ASSOC);
 
         if (!isset($row['type'])) {
@@ -295,7 +393,7 @@ class Postgres implements IStorage
         }
 
         $workflow = (new Factory())->new_workflow($row['type']);
-        if(!$workflow) {
+        if (!$workflow) {
             return null;
         }
 
@@ -335,48 +433,90 @@ class Postgres implements IStorage
      * @param $sql
      * @param $params
      *
-     * @return Statement
+     * @return false|Statement
+     * @throws RuntimeException
      */
     private function doSql($sql, $params)
     {
         $statement = $this->db->prepare($sql);
         $result = $statement->execute($params);
+
+        if($this->debug) {
+            error_log($sql);
+            error_log(json_encode($params));
+            if(!$result) {
+                error_log('ERROR: '.$statement->errorCode().' '.$statement->errorInfo());
+            }
+        }
+
         if (!$result) {
-            throw new RuntimeException("Error execute: $sql with params: " . var_export($params, true));
+            $error = $statement->errorCode().' '.$statement->errorInfo();
+            throw new RuntimeException("Error: $error\n $sql params:\n" . var_export($params, true));
         }
         return $statement;
     }
 
     public function save_workflow(Workflow $workflow, $unlock = true)
     {
+        try {
 
-        $sql = 'update workflow set
-            context = :context,
-            scheduled_at = to_timestamp(:scheduled_at_ts),
-            finished_at = current_timestamp,
-            lock = coalesce(:lock, lock),        
-            status = coalesce(:status, status),
-            error_count = error_count - coalesce(:error_count, 0)
-                where workflow_id = :workflow_id
+            $workflow_id = $workflow->get_id();
+
+            $this->db->beginTransaction();
+
+            $sql = 'update workflow set
+                context = :context,
+                scheduled_at = to_timestamp(:scheduled_at_ts),
+                finished_at = current_timestamp,
+                lock = coalesce(:lock, lock),        
+                status = coalesce(:status, status),
+                error_count = error_count - coalesce(:error_count, 0)
+                    where workflow_id = :workflow_id
         ';
 
-        /** @noinspection NestedTernaryOperatorInspection */
-        $status = $workflow->is_finished()
-            ? IStorage::STATUS_FINISHED
-            : ($unlock ? IStorage::STATUS_ACTIVE : null);
+            /** @noinspection NestedTernaryOperatorInspection */
+            $status = $workflow->is_finished()
+                ? IStorage::STATUS_FINISHED
+                : ($unlock ? IStorage::STATUS_ACTIVE : null);
 
-        $error_decrement = ($unlock && (!$workflow->is_error())) ? 1 : 0;
+            $error_decrement = ($unlock && (!$workflow->is_error())) ? 1 : 0;
 
-        $params = [
-            'workflow_id' => $workflow->get_id(),
-            'context' => $workflow->get_state(),
-            'scheduled_at_ts' => $workflow->get_start_time(),
-            'lock' => $unlock ? '' : null,
-            'status' => $status,
-            'error_count' => $error_decrement
-        ];
+            $params = [
+                'workflow_id' => $workflow_id,
+                'context' => $workflow->get_state(),
+                'scheduled_at_ts' => $workflow->get_start_time(),
+                'lock' => $unlock ? '' : null,
+                'status' => $status,
+                'error_count' => $error_decrement
+            ];
 
-        return $this->doSql($sql, $params);
+            $this->doSql($sql, $params);
+
+            if ($status === IStorage::STATUS_FINISHED) {
+
+                $this->doSql(
+                    "update event set finished_at = current_timestamp, status = :status 
+                                where workflow_id = :workflow_id",
+                    [
+                        'workflow_id' => $workflow_id,
+                        'status' => IStorage::STATUS_PROCESSED
+                    ]);
+
+                $this->doSql('update subscription set status = :status 
+                    where workflow_id = :workflow_id', [
+                        'workflow_id' => $workflow_id,
+                        'status' => IStorage::STATUS_FINISHED
+                    ]);
+            }
+
+            $this->db->commit();
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            $this->logger->error($e->getMessage());
+            return false;
+        }
+
+        return true;
     }
 
     public function close_event(Event $event)
@@ -390,7 +530,8 @@ class Postgres implements IStorage
         ]);
     }
 
-    private function update_hosts() {
+    private function update_hosts()
+    {
         $sql = 'INSERT INTO host ( hostname ) VALUES (:hostname)
                     ON CONFLICT (hostname)
                         DO UPDATE SET updated_at = now()';
@@ -401,15 +542,16 @@ class Postgres implements IStorage
 
         $this->doSql(
             sprintf("delete from host where updated_at < now() - interval '%d seconds'",
-            self::HOST_DELETE_DELAY), []
+                self::HOST_DELETE_DELAY), []
         );
     }
 
-    private function get_active_hosts() {
+    private function get_active_hosts()
+    {
         $result = $this->doSql("select hostname from host", []);
 
         $hosts = [];
-        while ( list($hostname) = $result->fetch(PDO::FETCH_NUM)) {
+        while (list($hostname) = $result->fetch(PDO::FETCH_NUM)) {
             $hosts[] = $hostname;
         }
         return $hosts;
@@ -430,11 +572,12 @@ class Postgres implements IStorage
                     status = :status
                     and "lock" <> \'\'
                     and EXTRACT(epoch FROM (current_timestamp - started_at)) > :time_limit
-                    limit 100';
+                    limit :limit';
 
         $result = $this->doSql($sql, [
             'status' => IStorage::STATUS_IN_PROGRESS,
-            'time_limit' => $this->get_execution_time_limit()
+            'time_limit' => $this->get_execution_time_limit(),
+            'limit' => self::TASK_LIST_SIZE_LIMIT
         ]);
 
         $rows = $result->rowCount();
@@ -453,10 +596,9 @@ class Postgres implements IStorage
                 'workflow_id' => $workflow_id
             ]);
 
-            if($updRes->rowCount() > 0) {
+            if ($updRes->rowCount() > 0) {
                 $this->logger->info("CLEANUP: Workflow $workflow_id restarted");
-            }
-            else{
+            } else {
                 $this->logger->warn("CLEANUP: Workflow $workflow_id restart failed");
             }
         }

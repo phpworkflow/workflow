@@ -1,6 +1,6 @@
 <?php
 
-namespace Workflow\Integration;
+namespace Workflow;
 
 use PHPUnit\Framework\TestCase;
 use Workflow\Event;
@@ -8,10 +8,15 @@ use Workflow\Node\INode;
 use Workflow\Example\GoodsSaleWorkflow;
 
 class SuccessFlowTest extends TestCase {
+    const CUSTOMER_ID = 25;
+
+    const ORDER_ID = 592;
+
     protected $workflow;
 
     public function setUp() {
         $this->workflow=new GoodsSaleWorkflow();
+        $this->workflow->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER, self::CUSTOMER_ID);
     }
 
     function test_success() {
@@ -20,7 +25,10 @@ class SuccessFlowTest extends TestCase {
         $wf->run();
         self::assertEquals('goto_select_goods', $wf->get_current_node_name());
 
-        $event=new Event(GoodsSaleWorkflow::EVENT_GOODS_SELECTED);
+        $event=new Event(GoodsSaleWorkflow::EVENT_GOODS_SELECTED,[
+            $wf::WF_KEY_CUSTOMER => self::CUSTOMER_ID,
+            $wf::WF_KEY_ORDER => self::ORDER_ID
+        ]);
 
         $wf->run([$event]);
         $node_name=$wf->get_current_node_name();
@@ -36,7 +44,7 @@ class SuccessFlowTest extends TestCase {
 
         $wf->set_exec_time(0);
         $wf->run();
-        $event=new Event(GoodsSaleWorkflow::EVENT_CONTEXT_MODIFIER,[GoodsSaleWorkflow::CONTEXT_VALUE_NAME => 135]);
+        $event=new Event(GoodsSaleWorkflow::EVENT_CONTEXT_MODIFIER, [GoodsSaleWorkflow::CONTEXT_VALUE_NAME => 135]);
         $wf->run([$event]);
         self::assertEquals(135, $wf->get_value(GoodsSaleWorkflow::CTX_SOME_EVENT));
 
