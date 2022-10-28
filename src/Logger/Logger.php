@@ -12,6 +12,12 @@ class Logger implements ILogger
 {
     const TIMESTAMP_FORMAT = 'Y-m-d H:i:s';
 
+    static protected $levels = [
+        self::ERROR => 0,
+        self::WARN => 1,
+        self::INFO => 2,
+        self::DEBUG => 3
+    ];
     /**
      * @var string
      */
@@ -26,14 +32,21 @@ class Logger implements ILogger
     private static $logger = null;
 
     /**
+     * @var string
+     */
+    protected $log_level;
+
+    /**
      * @param IStorage|null $storage
      * @return ILogger
      */
-    public static function instance(IStorage $storage = null): ILogger
+    public static function instance(IStorage $storage = null, $log_level = self::WARN): ILogger
     {
         if (self::$logger === null) {
             self::$logger = new Logger();
         }
+
+        self::$logger->log_level = self::$levels[$log_level];
 
         if($storage) {
             self::$logger->set_storage($storage);
@@ -46,9 +59,10 @@ class Logger implements ILogger
      * Logger constructor.
      * @param int $log_channel
      */
-    protected function __construct($log_channel = self::LOG_DATABASE)
+    protected function __construct($log_level = self::WARN, $log_channel = self::LOG_DATABASE)
     {
-        $this->set_log_channel($log_channel);
+        $this->log_level = $log_level;
+        $this->log_channel = $log_channel;
     }
 
     /**
@@ -68,12 +82,22 @@ class Logger implements ILogger
     }
 
     /**
+     * @param $log_channel
+     */
+    public function set_log_level($log_level = self::WARN)
+    {
+        $this->log_level = self::$levels[$log_level] ?? 0;
+    }
+
+    /**
      * @param $message
      * @param array $context
      */
     public function debug($message, array $context = array())
     {
-        $this->write_log($message);
+        if($this->log_level >= self::$levels[self::DEBUG]) {
+            $this->write_log($message);
+        }
     }
 
     /**
@@ -82,7 +106,9 @@ class Logger implements ILogger
      */
     public function info($message, array $context = array())
     {
-        $this->write_log($message, self::INFO);
+        if($this->log_level >= self::$levels[self::INFO]) {
+            $this->write_log($message, self::INFO);
+        }
     }
 
     /**
@@ -91,7 +117,9 @@ class Logger implements ILogger
      */
     public function warn($message, array $context = array())
     {
-        $this->write_log($message, self::WARN);
+        if($this->log_level >= self::$levels[self::WARN]) {
+            $this->write_log($message, self::WARN);
+        }
     }
 
     /**
@@ -100,7 +128,9 @@ class Logger implements ILogger
      */
     public function error($message, array $context = array())
     {
-        $this->write_log($message, self::ERROR);
+        if($this->log_level >= self::$levels[self::ERROR]) {
+            $this->write_log($message, self::ERROR);
+        }
     }
 
     /**
@@ -174,7 +204,7 @@ class Logger implements ILogger
      * @param $message
      * @param int $workflowId
      */
-    protected function store_log($message, int $workflowId = 0) {
+    protected function store_log($message, $workflowId = 0) {
         if(self::$storage) {
             self::$storage->store_log($message, $workflowId);
             return;

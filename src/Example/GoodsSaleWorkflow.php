@@ -3,6 +3,7 @@
 namespace Workflow\Example;
 
 use Workflow\Event;
+use Workflow\Logger\Logger;
 use Workflow\Workflow;
 use Workflow\Logger\ILogger;
 
@@ -82,6 +83,7 @@ class GoodsSaleWorkflow extends Workflow
 
         parent::__construct($process_nodes, $events_map, [self::WF_KEY_CUSTOMER]);
         $this->logger->set_log_channel(ILogger::LOG_CONSOLE);
+        $this->logger->set_log_level(Logger::DEBUG);
     }
 
 // This methods should be implemented by programmer BEGIN

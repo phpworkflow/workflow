@@ -567,7 +567,6 @@ class Postgres implements IStorage
 
         $active_hosts = $this->get_active_hosts();
 
-        $this->logger->warn("CLEANUP started");
         $sql = 'select workflow_id, "lock" from workflow where
                     status = :status
                     and "lock" <> \'\'
@@ -581,7 +580,10 @@ class Postgres implements IStorage
         ]);
 
         $rows = $result->rowCount();
-        $this->logger->warn("CLEANUP: $rows workflows stuck");
+        if($rows > 0) {
+            $this->logger->warn("CLEANUP: $rows workflows stuck");
+        }
+
         while ($row = $result->fetch(PDO::FETCH_NUM)) {
             list($workflow_id, $lock) = $row;
             list($host, $pid) = $this->get_host_pid_from_lock_string($lock);
