@@ -6,6 +6,7 @@ use PDO;
 use PHPUnit\Framework\TestCase;
 
 use Workflow\Event;
+use Workflow\Example\GoodsSaleFlow2;
 use Workflow\Example\GoodsSaleWorkflow;
 use Workflow\Example\RegularAction;
 use Workflow\Workflow;
@@ -31,6 +32,8 @@ class TPostgres extends Postgres {
 
 class PostgresTest extends TestCase
 {
+    private const TEST_CUSTOMER_ID = 3456;
+
     private $connection;
 
     private $storage;
@@ -75,12 +78,12 @@ class PostgresTest extends TestCase
 
     public function testCreateUniqueWorkflow() {
         $workflow1=new GoodsSaleWorkflow();
-        $workflow1->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER, 3456);
+        $workflow1->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER,  self::TEST_CUSTOMER_ID);
         $result = $this->storage->create_workflow($workflow1, true);
         self::assertTrue($result);
 
         $workflow2=new GoodsSaleWorkflow();
-        $workflow2->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER, 3456);
+        $workflow2->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER,  self::TEST_CUSTOMER_ID);
         $result = $this->storage->create_workflow($workflow2, true);
         self::assertFalse($result);
 
@@ -88,8 +91,40 @@ class PostgresTest extends TestCase
 
         $result = $this->storage->create_workflow($workflow2, true);
         self::assertTrue($result);
+
+
         $this->storage->finish_workflow($workflow2->get_id());
     }
+
+    public function testCreateUniqueWorkflowDifferentTypesSameKey() {
+        $workflow1=new GoodsSaleWorkflow();
+        $workflow1->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER, self::TEST_CUSTOMER_ID);
+        $result = $this->storage->create_workflow($workflow1, true);
+        self::assertTrue($result);
+
+        // Different type same context -> created
+        $workflowType2_1 = new GoodsSaleFlow2();
+        $workflowType2_1->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER,  self::TEST_CUSTOMER_ID);
+        $result = $this->storage->create_workflow($workflowType2_1, true);
+        self::assertTrue($result);
+
+        // Same type different context -> created
+        $workflowType2_2 = new GoodsSaleFlow2();
+        $workflowType2_2->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER,  self::TEST_CUSTOMER_ID+1);
+        $result = $this->storage->create_workflow($workflowType2_2, true);
+        self::assertTrue($result);
+
+        // Same type same context -> DUPLICATION
+        $workflowType2_3 = new GoodsSaleFlow2();
+        $workflowType2_3->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER,  self::TEST_CUSTOMER_ID);
+        $result = $this->storage->create_workflow($workflowType2_3, true);
+        self::assertFalse($result);
+
+        $this->storage->finish_workflow($workflow1->get_id());
+        $this->storage->finish_workflow($workflowType2_1->get_id());
+        $this->storage->finish_workflow($workflowType2_2->get_id());
+    }
+
 
     public function testCreateEvent() {
         $storage = $this->storage; //new TPostgres($this->connection);
@@ -138,6 +173,14 @@ class PostgresTest extends TestCase
     public function testFinishWorkflow() {
         $active_ids = $this->storage->get_active_workflow_ids();
         $workflow_id = array_shift($active_ids);
+
+        if(empty($active_ids)) {
+            $workflow1=new GoodsSaleWorkflow();
+            $workflow1->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER, self::TEST_CUSTOMER_ID+10);
+            $result = $this->storage->create_workflow($workflow1, true);
+            self::assertTrue($result, 'Workflow not created');
+            $workflow_id = $workflow1->get_id();
+        }
 
         $workflow = $this->storage->get_workflow($workflow_id);
         $workflow->goto_node('end');

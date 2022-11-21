@@ -143,17 +143,24 @@ class Postgres implements IStorage
      *
      * @return bool
      */
-    private function workflowExists($key, $value) {
-        $result = $this->doSql('select 1 from subscription 
-                where status =:status
-                  and event_type = :uniqueness 
-                  and context_key = :key 
-                  and context_value = :value',
+    private function workflow_exists($type, $key, $value) {
+
+        $sql = <<<SQL
+select 1 from workflow where workflow_id in (
+select subscription.workflow_id from subscription
+where status =:status
+  and event_type = :uniqueness
+  and context_key = :key
+  and context_value = :value ) and type = :type;
+SQL;
+
+        $result = $this->doSql($sql,
             [
                 'status' => IStorage::STATUS_ACTIVE,
                 'uniqueness' => self::UNIQUENESS,
                 'key' => $key,
-                'value' => $value
+                'value' => $value,
+                'type' => $type
             ]);
 
         return $result->rowCount() > 0;
@@ -169,7 +176,7 @@ class Postgres implements IStorage
 
         if($unique) {
             list($key, $value) = $workflow->get_uniqueness();
-            if($this->workflowExists($key, $value)) {
+            if($this->workflow_exists($workflow->get_type(), $key, $value)) {
                 return false;
             }
         }
@@ -248,7 +255,7 @@ class Postgres implements IStorage
             $sql = 'update workflow set 
                     finished_at = current_timestamp, 
                     status = :status,
-                    lock = :lock
+                    "lock" = :lock
                 where workflow_id = :workflow_id';
 
             $this->doSql($sql, [
@@ -367,20 +374,21 @@ class Postgres implements IStorage
         ];
 
         if ($doLock) {
-            $sql = "UPDATE workflow SET 
-                lock = :lock_id,
+            $sql = 'UPDATE workflow SET 
+                "lock" = :lock_id,
                 status = :status,
                 started_at = current_timestamp,
                 error_count=error_count+1
-            WHERE workflow_id = :workflow_id AND lock = ''";
+            WHERE workflow_id = :workflow_id AND "lock" = :lock';
 
             $this->doSql($sql, [
                 'lock_id' => $lockId,
                 'status' => IStorage::STATUS_IN_PROGRESS,
-                'workflow_id' => $id
+                'workflow_id' => $id,
+                'lock' => ''
             ]);
 
-            $selectSql .= ' AND lock=:lock_id';
+            $selectSql .= ' AND "lock"=:lock_id';
             $params['lock_id'] = $lockId;
         }
 
@@ -445,7 +453,7 @@ class Postgres implements IStorage
             error_log($sql);
             error_log(json_encode($params));
             if(!$result) {
-                error_log('ERROR: '.$statement->errorCode().' '.$statement->errorInfo());
+                error_log('ERROR: '.$statement->errorCode().' '.json_encode($statement->errorInfo()));
             }
         }
 
@@ -468,7 +476,7 @@ class Postgres implements IStorage
                 context = :context,
                 scheduled_at = to_timestamp(:scheduled_at_ts),
                 finished_at = current_timestamp,
-                lock = coalesce(:lock, lock),        
+                "lock" = coalesce(:lock, "lock"),        
                 status = coalesce(:status, status),
                 error_count = error_count - coalesce(:error_count, 0)
                     where workflow_id = :workflow_id
@@ -592,7 +600,7 @@ class Postgres implements IStorage
                 continue;
             }
 
-            $updRes = $this->doSql('update workflow set lock = :lock, status=:status WHERE workflow_id = :workflow_id', [
+            $updRes = $this->doSql('update workflow set "lock" = :lock, status=:status WHERE workflow_id = :workflow_id', [
                 'lock' => '',
                 'status' => IStorage::STATUS_ACTIVE,
                 'workflow_id' => $workflow_id
