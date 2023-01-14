@@ -129,7 +129,7 @@ abstract class Workflow
         foreach ($this->unique_properties as $property) {
             $value = $this->get_context($property);
             if(!is_scalar($value)) {
-                throw new LogicException("Content of $property should be scalar value");
+		        throw new LogicException("Content of $property should be scalar value. Property type is ".gettype($value));
             }
             $keys[$property] = $value;
         }

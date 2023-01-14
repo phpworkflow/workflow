@@ -24,14 +24,14 @@ class Swoole extends AbstractEngine {
     /**
      * @var Server
      */
-    protected Server $server;
+    protected $server;
 
     protected $workerId;
 
     /**
      * @var array
      */
-    protected array $taskList = [];
+    protected $taskList = [];
 
     /**
      * HttpServer constructor.
@@ -65,7 +65,7 @@ class Swoole extends AbstractEngine {
         return (int)($_ENV['NUM_TASK_WORKERS'] ?? 0) ?: self::NUM_TASK_WORKERS;
     }
 
-    public function run() {
+    public function run(array $workflows = []) {
         $this->server->start();
     }
 

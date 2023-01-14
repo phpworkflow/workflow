@@ -1,6 +1,4 @@
 <?php
-declare(ticks=1);
-
 namespace Workflow\Engine;
 
 use Workflow\Logger\ILogger;
@@ -27,21 +25,21 @@ class Simple extends AbstractEngine {
         pcntl_signal(SIGTERM, [$this, "sigHandler"]);
     }
 
-    public function run() {
+    public function run(array $workflows = []) {
         while($this->num_cycles-- && !$this->exit) {
-            $this->execute_workflows();
+            $this->execute_workflows($workflows);
             sleep($this->sleep_time);
         }
     }
 
-    private function execute_workflows() {
+    private function execute_workflows(array $workflows = []) {
         $this->logger->debug("Start");
-        $wf_ids=$this->storage->get_active_workflow_ids();
+        $wf_ids=$workflows ?: $this->storage->get_active_workflow_ids();
 
         $numTasks = count($wf_ids);
 
         if($numTasks > 0 ) {
-            $this->storage->store_log("Read $numTasks task(s)");
+            $this->storage->store_log("Read/recieve $numTasks task(s)");
         }
 
         foreach($wf_ids as $id) {

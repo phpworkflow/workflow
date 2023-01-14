@@ -10,12 +10,17 @@ abstract class AbstractEngine
 {
     /** @var AbstractEngine $instance */
     static protected $instance;
+
     /** @var IStorage $storage */
     protected $storage;
+
     /** @var ILogger $logger */
     protected $logger;
 
-    protected bool $exit;
+    /**
+     * @var boolean $exit
+     */
+    protected $exit;
 
     protected function __construct(IStorage $storage, ILogger $logger)
     {
@@ -32,6 +37,6 @@ abstract class AbstractEngine
         return self::$instance;
     }
 
-    abstract public function run();
+    abstract public function run(array $workflows=[]);
 
 }
