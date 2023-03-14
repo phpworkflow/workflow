@@ -25,7 +25,7 @@ abstract class Workflow
     const EVENT_FILTER = "event_filter";
 
     // Endless cycles protection
-    const MAX_ITERATIONS = 100;
+    const MAX_ITERATIONS = 150;
 
     const DEFAULT_ERROR_LIMIT = 3;
 
@@ -394,6 +394,7 @@ abstract class Workflow
                 if (count($events) > 0) {
                     $this->last_event = $this->handle_event(array_shift($events));
                     $event_arrived = true;
+                    $iteration_counter=0;
                 }
 
                 // Endless cycles protection
