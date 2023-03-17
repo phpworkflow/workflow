@@ -56,13 +56,33 @@ class Postgres implements IStorage
     public static function instance(string $dsn, ILogger $logger = null): IStorage
     {
         if (self::$_storage === null) {
-            $connection = new PDO($dsn, null, null,
-                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
             self::$dsn = $dsn;
             self::$_storage = self::createInstance($dsn);
         }
 
         return self::$_storage;
+    }
+
+    /**
+     * @return bool
+     */
+    public static function reconnect(): bool {
+        self::$_storage = null;
+        $db = self::instance(self::$dsn);
+        return $db->ping();
+    }
+
+    /**
+     * @return bool
+     */
+    public function ping(): bool {
+        try {
+            return $this->doSql('select 1', []) !== false;
+        }
+        catch (Exception $e) {
+            $this->logToStderr($e);
+        }
+        return false;
     }
 
     private static function createInstance(string $dsn): IStorage
@@ -212,6 +232,7 @@ SQL;
 
             $this->db->commit();
         } catch (Exception $e) {
+            $this->logToStderr($e);
             $this->db->rollBack();
             $this->logger->error($e->getMessage());
             return false;
@@ -266,6 +287,7 @@ SQL;
 
             $this->db->commit();
         } catch (Exception $e) {
+            $this->logToStderr($e);
             $this->db->rollBack();
             $this->logger->error($e->getMessage());
             return false;
@@ -320,6 +342,7 @@ SQL;
                 ]);
             }
         } catch (Exception $e) {
+            $this->logToStderr($e);
             $this->logger->error($e->getMessage());
             return false;
         }
@@ -430,6 +453,7 @@ SQL;
                 $this->db->query("SELECT 1 FROM $tableName LIMIT 1");
             }
         } catch (Exception $e) {
+            $this->logToStderr($e);
             return false;
         }
 
@@ -518,6 +542,7 @@ SQL;
 
             $this->db->commit();
         } catch (Exception $e) {
+            $this->logToStderr($e);
             $this->db->rollBack();
             $this->logger->error($e->getMessage());
             return false;
@@ -659,6 +684,19 @@ SQL;
             'pid' => getmypid() ?: 0,
             'host' => md5(gethostname())
         ]);
+    }
+
+    /**
+     * @param Exception $e
+     */
+    protected function logToStderr(Exception $e): void
+    {
+        $error = [
+            "category" => "WFPSQL",
+            "error" => $e->getMessage(),
+            "trace" => $e->getTraceAsString()
+        ];
+        error_log(json_encode($error));
     }
 
 }
