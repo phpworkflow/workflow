@@ -355,20 +355,22 @@ SQL;
      * Returns the array with IDs of workflows for execution
      * @return array
      */
-    public function get_active_workflow_ids($type = '')
+    public function get_active_workflow_ids($typeFilter = '', $limit = self::TASK_LIST_SIZE_LIMIT)
     {
         /** @noinspection SqlConstantCondition */
-        $sql = 'select distinct workflow_id from ( select wf.workflow_id, wf.scheduled_at, random() rnd
+        $sql = "select distinct workflow_id from ( select wf.workflow_id, wf.scheduled_at, random() rnd
             from workflow wf left join
                 event e on wf.workflow_id = e.workflow_id
             where ((e.status = :status and e.created_at <= current_timestamp)
-                or (wf.status = :status and wf.scheduled_at <= current_timestamp))            
+                or (wf.status = :status and wf.scheduled_at <= current_timestamp))
+               and ( :typeFilter = '' or wf.type like '%'||:typeFilter||'%' )
             order by wf.scheduled_at, rnd ) wf
-                limit :limit';
+                limit :limit";
 
         $statement = $this->doSql($sql, [
             'status' => IStorage::STATUS_ACTIVE,
-            'limit' => self::TASK_LIST_SIZE_LIMIT
+            'typeFilter' => $typeFilter,
+            'limit' => $limit
         ]);
 
         $column = [];
