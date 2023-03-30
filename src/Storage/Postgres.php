@@ -352,10 +352,53 @@ SQL;
     }
 
     /**
+     * Returns the array with arrays of workflow IDs grouped by type
+     * @return array
+     */
+    public function get_active_workflow_by_type($limit = 10)
+    {
+        /** @noinspection SqlConstantCondition */
+        $sql = <<<SQL
+select type, array_to_json(array_agg(workflow_id)) wf_list
+from (
+         select workflow_id,
+                type,
+                row_number() OVER (PARTITION BY type) AS rn
+         from (
+                  select distinct workflow_id,
+                                  type
+                  from (select wf.workflow_id, wf.type, random() rnd
+                        from workflow wf
+                                 left join
+                             event e on wf.workflow_id = e.workflow_id
+                        where ((e.status = :status and e.created_at <= current_timestamp)
+                            or
+                               (wf.status = :status and wf.scheduled_at <= current_timestamp))
+                        order by wf.scheduled_at, rnd) wf
+              ) aa
+     ) bb
+where rn < :limit
+group by type;
+SQL;
+
+        $statement = $this->doSql($sql, [
+            'status' => IStorage::STATUS_ACTIVE,
+            'limit' => $limit
+        ]);
+
+        $result = [];
+        while ($row = $statement->fetch()) {
+            $result[$row['type']] = json_decode($row['wf_list']);
+        }
+
+        return $result;
+    }
+
+    /**
      * Returns the array with IDs of workflows for execution
      * @return array
      */
-    public function get_active_workflow_ids($type = '')
+    public function get_active_workflow_ids($limit = self::TASK_LIST_SIZE_LIMIT)
     {
         /** @noinspection SqlConstantCondition */
         $sql = 'select distinct workflow_id from ( select wf.workflow_id, wf.scheduled_at, random() rnd
@@ -368,7 +411,7 @@ SQL;
 
         $statement = $this->doSql($sql, [
             'status' => IStorage::STATUS_ACTIVE,
-            'limit' => self::TASK_LIST_SIZE_LIMIT
+            'limit' => $limit
         ]);
 
         $column = [];

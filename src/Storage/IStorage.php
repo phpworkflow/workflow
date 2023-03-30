@@ -43,6 +43,12 @@ interface IStorage
     public function get_active_workflow_ids();
 
     /**
+     * Returns the array with arrays of workflow IDs grouped by type
+     * @return array
+     */
+    public function get_active_workflow_by_type($limit = 10);
+
+    /**
      * Returns Workflow object. Lock this workflow in storage by default
      * @param int $id workflow id
      * @param boolean $doLock
