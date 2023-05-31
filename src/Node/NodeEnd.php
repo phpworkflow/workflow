@@ -19,17 +19,25 @@ class NodeEnd extends Base {
         parent::__construct($parameters);
     }
 
-    public function execute(Workflow $wf) {
+    /**
+     * @param Workflow $workflow
+     * @return int
+     */
+    public function execute(Workflow $workflow): int {
         return self::LAST_NODE;
     }
 
+    /**
+     * @param $node_name
+     * @return string|null
+     */
     public static function get_type_by_name($node_name) {
 
         if(strcmp(self::NODE_PREFIX,$node_name) === 0) {
             return static::class;
         }
 
-        return false;
+        return null;
     }
 
 }

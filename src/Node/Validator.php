@@ -11,7 +11,7 @@ class Validator {
     protected $process_nodes;   // Array with the process description
     private $list_nodes=[];        // Array for validation process nodes
     protected $compiled_nodes=[];
-    private $workflow=null;
+    private $workflow;
 
     public function __construct(array $process_nodes, Workflow $wf) {
         $this->process_nodes = $process_nodes ?: [];
@@ -24,6 +24,10 @@ class Validator {
         return $this->compiled_nodes;
     }
 
+    /**
+     * @return void
+     * @throws Exception
+     */
     public function validate() {
         $this->_validate($this->process_nodes);
         $this->_validate_labels($this->process_nodes);
@@ -32,7 +36,8 @@ class Validator {
 
     /**
      * @param $node_arr
-     *
+     * @param $parent_next_node
+     * @return void
      * @throws Exception
      */
     private function _validate(&$node_arr, $parent_next_node=INode::LAST_NODE) {
@@ -68,6 +73,9 @@ class Validator {
 
     /**
      * Validate GOTO commands labels
+     * @param array $node_arr
+     * @return void
+     * @throws Exception
      */
     private function _validate_labels(array &$node_arr) {
 
@@ -102,6 +110,11 @@ class Validator {
         }
     }
 
+    /**
+     * @param array $node
+     * @return void
+     * @throws Exception
+     */
     private function _fix_node(array &$node) {
         // If description is without name key
         if(isset($node[0]) && !isset($node[INode::P_NAME])) {
@@ -127,11 +140,16 @@ class Validator {
 
     }
 
+    /**
+     * @param $node_name
+     * @return int
+     * @throws Exception
+     */
     private function _get_type_by_name($node_name) {
         foreach(self::$node_types as $node_type) {
             $result=$node_type::get_type_by_name($node_name);
 
-            if($result !== false) {
+            if($result !== null) {
                 return $result;
             }
         }
@@ -150,7 +168,6 @@ class Validator {
             return;
         }
 
-        // TODO do not forget chnage namespace
         while( false !== ($file = readdir($dir))) {
             if(preg_match('/^(Node\w+?)\.php/',$file,$match)) {
                 require_once($match[0]); // File name

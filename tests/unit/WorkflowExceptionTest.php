@@ -12,7 +12,7 @@ class ExceptionWorkflow extends Workflow {
             ["action1"],
             ["end"]
         ];
-        parent::__construct($process_nodes, []);
+        parent::__construct($process_nodes);
     }
 
     public function action1() {

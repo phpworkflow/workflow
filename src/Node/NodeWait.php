@@ -11,7 +11,7 @@ class NodeWait extends Base {
 
     const NODE_PREFIX="wait_";
 
-    const TIME_PATTERN='/(\d{1,2})\:(\d{1,2})/';
+    const TIME_PATTERN='/(\d{1,2}):(\d{1,2})/';
 
     /**
      * @var int
@@ -22,18 +22,18 @@ class NodeWait extends Base {
      * NodeWait constructor.
      * @param array $parameters
      */
-    public function __construct(array &$parameters) {
+    public function __construct(array $parameters) {
         parent::__construct($parameters);
 
         $this->timeout=$parameters[INode::P_TIMEOUT];
     }
 
     /**
-     * @param Workflow $wf
+     * @param Workflow $workflow
      * @return int
      */
-    public function execute(Workflow $wf) {
-        $wf->set_exec_time($wf->now() + $this->timeout);
+    public function execute(Workflow $workflow): int {
+        $workflow->set_exec_time($workflow->now() + $this->timeout);
         return $this->next_node_id;
     }
 
@@ -72,7 +72,7 @@ class NodeWait extends Base {
         $currentTS = $dt->getTimestamp();
         $h=$match[1];
         $m=$match[2];
-        $dt->setTime($h,$m,0);
+        $dt->setTime($h,$m);
 
         if($dt->getTimestamp() > $currentTS) {
             return $dt->getTimestamp() - $currentTS;

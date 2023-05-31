@@ -6,12 +6,12 @@ use Exception;
 
 class ExceptionWorkflow extends Workflow {
 
-    public const EXECEPTION_ACTION = 'exeception_action';
+    public const EXCEPTION_ACTION = 'exception_action';
 
     public function __construct() {
         $process_nodes = [
             ["action1"],
-            [self::EXECEPTION_ACTION],
+            [self::EXCEPTION_ACTION],
             ["wait_to_goto", "timeout" => 2],
             ["goto_action1", "counter" => 7],
             ["end"]
@@ -28,7 +28,11 @@ class ExceptionWorkflow extends Workflow {
         $this->logger->info("FINISH ACTION1: $cnt");
     }
 
-    public function exeception_action() {
+    /**
+     * @return void
+     * @throws Exception
+     */
+    public function exception_action() {
         $num = $this->get_context('ex_counter') ?: 0;
         $num++;
         $this->set_context('ex_counter',$num);

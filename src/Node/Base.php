@@ -25,7 +25,7 @@ abstract class Base implements INode
         $this->node_id_to_go = $node_id;
     }
 
-    public function execute(Workflow $wf)
+    public function execute(Workflow $workflow): int
     {
         if($this->node_id_to_go) {
             $node_id = $this->node_id_to_go;
@@ -50,6 +50,10 @@ abstract class Base implements INode
         return static::PRIORITY;
     }
 
+    /**
+     * @param $node_name
+     * @return string | null
+     */
     public static function get_type_by_name($node_name)
     {
 
@@ -59,13 +63,14 @@ abstract class Base implements INode
             return static::class;
         }
 
-        return false;
+        return null;
     }
 
     /**
-     * Create node attributes by node name if don't exist
-     *
+     * Create node attributes by node name if not exists
+     * @param Workflow $workflow
      * @param array $node
+     * @return void
      */
     public static function fix_node(Workflow $workflow, array &$node)
     {
@@ -77,7 +82,12 @@ abstract class Base implements INode
      * @return Node\INode $result
      */
 
-    public static function node_factory(array $node)
+    /**
+     * @param array $node
+     * @return INode $result
+     * @throws Exception
+     */
+    public static function node_factory(array $node): INode
     {
 
         $class_name = $node[INode::P_TYPE];

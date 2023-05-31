@@ -2,8 +2,6 @@
 
 namespace Workflow\Storage;
 
-use PDO;
-use Workflow\IFactory;
 use Workflow\Logger\ILogger;
 use Workflow\Workflow;
 use Workflow\Event;
@@ -22,7 +20,7 @@ interface IStorage
     /**
      * Returns the instance of Storage (IStorage interface)
      * @param string $dsn
-     * @param ILogger $logger
+     * @param ILogger|null $logger
      *
      * @return IStorage
      */

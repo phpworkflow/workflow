@@ -15,7 +15,7 @@ class WaitWorkflow extends Workflow {
             ["action1"],
             ["end"]
         ];
-        parent::__construct($process_nodes, []);
+        parent::__construct($process_nodes);
     }
 
     protected function action1() {
@@ -34,8 +34,7 @@ class WaitTest extends  TestCase
         $startTime->add(new DateInterval('PT5M'));
         $startTime->setTime(
             $startTime->format('H'),
-            $startTime->format('i'),
-            0);
+            $startTime->format('i'));
 
         $timeParam = $startTime->format("H:i");
         $workflow = new WaitWorkflow($timeParam);
@@ -52,8 +51,8 @@ class WaitTest extends  TestCase
         $startTime->sub(new DateInterval('PT5M'));
         $startTime->setTime(
             $startTime->format('H'),
-            $startTime->format('i'),
-            0);
+            $startTime->format('i')
+            );
 
         $workflow = new WaitWorkflow2( $startTime->format("H:i"));
         $workflow->run();

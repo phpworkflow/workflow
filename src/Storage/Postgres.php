@@ -48,8 +48,10 @@ class Postgres implements IStorage
     /* @var PDO $db */
     private $db;
 
+    private bool $isDebug;
+
     /**
-     * @param PDO $connection
+     * @param string $dsn
      * @param ILogger|null $logger
      * @return IStorage
      */
@@ -109,7 +111,7 @@ class Postgres implements IStorage
     {
         $this->logger = Logger::instance();
         $this->db = $connection;
-        $this->debug = (getenv(self::ENV_DEBUG_WF_SQL) !== false);
+        $this->isDebug = (getenv(self::ENV_DEBUG_WF_SQL) !== false);
     }
 
     private function createSubscription(Workflow $workflow, $is_new = true)
@@ -118,7 +120,7 @@ class Postgres implements IStorage
          * @var Subscription $s
          */
         foreach ($workflow->get_subscription($is_new) as $s) {
-            // Workflow can be subscribe to several values of some event filter
+            // Workflow can subscribe to several values of some event filter
             $values = is_array($s->context_value) ? $s->context_value : [$s->context_value];
 
             foreach ($values as $v) {
@@ -159,8 +161,9 @@ class Postgres implements IStorage
 
     /**
      * Checks if workflow with unique properties exists
-     * @param Workflow $workflow
-     *
+     * @param $type
+     * @param $key
+     * @param $value
      * @return bool
      */
     private function workflow_exists($type, $key, $value) {
@@ -487,7 +490,7 @@ SQL;
     protected function is_created()
     {
         $structure = file_get_contents($this->db_structure);
-        if (!preg_match_all('/CREATE TABLE (\w+)/sim', $structure, $match)) {
+        if (!preg_match_all('/CREATE TABLE (\w+)/im', $structure, $match)) {
             throw new LogicException('Database structure not exists');
         }
 
@@ -515,7 +518,7 @@ SQL;
         $statement = $this->db->prepare($sql);
         $result = $statement->execute($params);
 
-        if($this->debug) {
+        if($this->isDebug) {
             error_log($sql);
             error_log(json_encode($params));
             if(!$result) {
@@ -524,7 +527,7 @@ SQL;
         }
 
         if (!$result) {
-            $error = $statement->errorCode().' '.$statement->errorInfo();
+            $error = $statement->errorCode().' '.json_encode($statement->errorInfo());
             throw new RuntimeException("Error: $error\n $sql params:\n" . var_export($params, true));
         }
         return $statement;
@@ -688,7 +691,8 @@ SQL;
 
     /**
      * @param $workflow_id
-     * @return Event[] $events array of Event objects
+     * @return Event[]
+     * @throws Exception
      */
     public function get_events($workflow_id)
     {
@@ -715,8 +719,8 @@ SQL;
     }
 
     /**
-     * Store $log_message to log
      * @param $log_message
+     * @param $workflow_id
      * @return void
      */
     public function store_log($log_message, $workflow_id = 0)

@@ -2,7 +2,7 @@
 namespace Workflow;
 
 use Workflow\Storage\IStorage;
-
+use Exception;
 class Event {
 
     /* @var int $workflow_id */
@@ -13,6 +13,13 @@ class Event {
     /* @var Context $context */
     protected $context=null;
 
+    /**
+     * @param $type
+     * @param $context
+     * @param $status
+     *
+     * @throws Exception
+     */
     public function __construct($type, $context=null, $status=IStorage::STATUS_ACTIVE) {
 
         $this->type=$type;
@@ -32,7 +39,6 @@ class Event {
 
         if(is_string($context)) {
             $this->context->unserialize($context);
-            return;
         }
 
     }
@@ -97,8 +103,9 @@ class Event {
 
     /**
      * Set the event state
-     *
-     * @param string $serialized_state
+     * @param $serializedState
+     * @return void
+     * @throws Exception
      */
     public function setContext($serializedState) {
         $this->context->unserialize($serializedState);

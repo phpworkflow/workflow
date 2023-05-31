@@ -20,17 +20,31 @@ class NodeAction extends Base {
         $this->method=$parameters[INode::P_METHOD];
     }
 
-    public function execute(Workflow $wf) {
+    /**
+     * @param Workflow $workflow
+     * @return int
+     */
+    public function execute(Workflow $workflow): int {
         $method = $this->method;
-        $wf->$method($this->params);
+        $workflow->$method($this->params);
 
-        return parent::execute($wf);
+        return parent::execute($workflow);
     }
 
+    /**
+     * @param $node_name
+     * @return string
+     */
     public static function get_type_by_name($node_name) {
         return static::class;
     }
 
+    /**
+     * @param Workflow $workflow
+     * @param array $node
+     * @return void
+     * @throws Exception
+     */
     public static function fix_node(Workflow $workflow, array &$node) {
 
         if (!isset($node[self::P_METHOD]) ) {

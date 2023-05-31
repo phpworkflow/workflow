@@ -3,9 +3,9 @@
 namespace Workflow\Example;
 
 use Workflow\Event;
-use Workflow\Logger\Logger;
 use Workflow\Workflow;
 use Workflow\Logger\ILogger;
+use Exception;
 
 class GoodsSaleWorkflow extends Workflow
 {
@@ -83,7 +83,7 @@ class GoodsSaleWorkflow extends Workflow
 
         parent::__construct($process_nodes, $events_map, [self::WF_KEY_CUSTOMER]);
         $this->logger->set_log_channel(ILogger::LOG_CONSOLE);
-        $this->logger->set_log_level(Logger::DEBUG);
+        $this->logger->set_log_level(ILogger::DEBUG);
     }
 
 // This methods should be implemented by programmer BEGIN
@@ -99,6 +99,10 @@ class GoodsSaleWorkflow extends Workflow
         sleep(1);
     }
 
+    /**
+     * @return bool
+     * @throws Exception
+     */
     public function if_selected_goods_on_stock()
     {
         // Some logic that check the depot

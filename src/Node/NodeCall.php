@@ -1,22 +1,36 @@
 <?php
 namespace Workflow\Node;
 use Workflow\Workflow;
+use Exception;
 
 class NodeCall extends Base {
     const PRIORITY=1;
     const NODE_PREFIX="call_";
     protected $label;
 
-    public function __construct(array &$parameters) {
+    /**
+     * @param array $parameters
+     */
+    public function __construct(array $parameters) {
         parent::__construct($parameters);
         $this->label=$parameters[INode::P_LABEL];
     }
 
-    public function execute(Workflow $wf) {
-        $wf->add_to_call_stack($this->next_node_id);
-        return $wf->get_node_id_by_name($this->label);
+    /**
+     * @param Workflow $workflow
+     * @return int
+     * @throws Exception
+     */
+    public function execute(Workflow $workflow): int {
+        $workflow->add_to_call_stack($this->next_node_id);
+        return $workflow->get_node_id_by_name($this->label);
     }
 
+    /**
+     * @param Workflow $workflow
+     * @param array $node
+     * @return void
+     */
     public static function fix_node(Workflow $workflow, array &$node) {
 
         // Create label by node name if not exists

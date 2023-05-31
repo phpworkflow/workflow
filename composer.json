@@ -11,21 +11,18 @@
     }
   ],
   "require": {
-    "php": ">=7.1",
+    "php": ">=7.4",
     "ext-json": "*",
-    "ext-pcntl": "*",
     "ext-pdo": "*",
     "psr/log": "*"
   },
   "require-dev": {
-    "phpunit/phpunit": "^7.5",
-    "roave/security-advisories":"dev-master",
-    "eaglewu/swoole-ide-helper": "dev-master"
+    "phpunit/phpunit": "^9.5",
+    "roave/security-advisories":"dev-master"
   },
   "autoload": {
     "psr-4": {
-      "Workflow\\": ["src/", "tests/unit/"],
-      "SampleApp\\": "bin/"
+      "Workflow\\": ["src/", "tests/unit/", "tests/integration/"]
     }
   }
 }

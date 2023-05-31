@@ -67,9 +67,11 @@ abstract class Workflow
     protected $unique_properties =[];
 
     /**
-     * Basic initialization. parent::__construct should be executed in sub classes constructor
+     * Basic initialization. parent::__construct should be executed in subclasses constructor
      *
      * @param array $process_nodes
+     * @param array $events_map
+     * @param array $unique_properties
      */
     public function __construct(array $process_nodes = [], array $events_map = [], array $unique_properties = [])
     {
@@ -165,6 +167,7 @@ abstract class Workflow
     /**
      * Set the process state
      * @param string $serialized_state
+     * @throws Exception
      */
     public function set_state($serialized_state)
     {
@@ -271,6 +274,7 @@ abstract class Workflow
      *
      * @param Event $event
      * @return Event
+     * @throws Exception
      */
     private function handle_event(Event $event)
     {
@@ -299,6 +303,10 @@ abstract class Workflow
         return $event;
     }
 
+    /**
+     * @return void
+     * @throws Exception
+     */
     private function _run()
     {
         /* @var INode $current_node */
@@ -329,6 +337,11 @@ abstract class Workflow
         } while (!(empty($next_node_id) || $this->is_finished()));
     }
 
+    /**
+     * @param $node_id
+     * @return void
+     * @throws Exception
+     */
     private function set_current_node($node_id)
     {
         // TODO remove this after tests
@@ -338,7 +351,12 @@ abstract class Workflow
         $this->current_node = $node_id;
     }
 
-    public function get_node_id_by_name($node_name)
+    /**
+     * @param $node_name
+     * @return int
+     * @throws Exception
+     */
+    public function get_node_id_by_name($node_name): int
     {
         if (isset(self::$nodes_map[get_class($this)][$node_name])) {
             return self::$nodes_map[get_class($this)][$node_name];
@@ -349,6 +367,7 @@ abstract class Workflow
 
     /*
      * @return INode $node
+     * @throws Exception
      */
     private function get_current_node()
     {
@@ -594,6 +613,7 @@ abstract class Workflow
 
     /**
      * Return workflow execution to the previous saved node
+     * @throws Exception
      */
     public function return_to_saved_node()
     {

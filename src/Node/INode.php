@@ -36,7 +36,7 @@ interface INode {
      * @param Workflow $workflow
      * @return mixed
      */
-    public function execute(Workflow $workflow);
+    public function execute(Workflow $workflow): int;
 
     /**
      * @return mixed
@@ -59,7 +59,7 @@ interface INode {
      * Define type of the command by command name: if_ - selector,  goto_ - goto, etc
      *
      * @param string $node_name
-     * @return int
+     * @return string | null
      */
     public static function get_type_by_name($node_name);
 

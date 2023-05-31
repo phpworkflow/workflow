@@ -3,11 +3,13 @@
 namespace Workflow\Example;
 
 use Workflow\Event;
+use Exception;
 
 class Event1 extends Event
 {
     /**
-     * Event1 constructor.
+     * @param $context
+     * @throws Exception
      */
     public function __construct($context)
     {

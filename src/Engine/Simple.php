@@ -43,7 +43,6 @@ class Simple extends AbstractEngine {
         }
 
         foreach($wf_ids as $id) {
-            /* @var Workflow $workflow */
             // Lock and get workflow object
             $workflow=$this->storage->get_workflow($id);
             if($workflow === null) {

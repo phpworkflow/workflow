@@ -38,6 +38,11 @@ class Context {
         return $str;
     }
 
+    /**
+     * @param $str
+     * @return void
+     * @throws Exception
+     */
     public function unserialize($str) {
         $buffer=json_decode($str, true) ?: [];
 

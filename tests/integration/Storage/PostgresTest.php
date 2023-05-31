@@ -4,6 +4,7 @@ namespace Workflow\Storage;
 
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Exception;
 
 use Workflow\Event;
 use Workflow\Example\GoodsSaleFlow2;
@@ -38,7 +39,7 @@ class PostgresTest extends TestCase
 
     private $storage;
 
-    public function setup()
+    public function setUp(): void
     {
         // pgsql:user=<user>;password=<password>;host=localhost;port=5432;dbname=workflow
         $this->connection = new PDO($_ENV['WORKFLOW_DB_DSN']);
@@ -71,7 +72,7 @@ class PostgresTest extends TestCase
         $storage->cleanup();
 
         $workflow2=$storage->get_workflow($workflowId);
-        // Can't cleanup due to same pid
+        // Can't process cleanup due to same pid
         self::assertEmpty($workflow2);
 
     }
@@ -170,6 +171,10 @@ class PostgresTest extends TestCase
         self::assertEquals('a51fad2e4cef', $host);
     }
 
+    /**
+     * @return void
+     * @throws Exception
+     */
     public function testFinishWorkflow() {
         $active_ids = $this->storage->get_active_workflow_ids();
         $workflow_id = array_shift($active_ids);

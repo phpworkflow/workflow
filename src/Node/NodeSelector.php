@@ -36,22 +36,30 @@ class NodeSelector extends NodeAction {
         }
     }
 
-    public function execute(Workflow $wf) {
+    /**
+     * @param Workflow $workflow
+     * @return int
+     */
+    public function execute(Workflow $workflow): int {
         $method = $this->method;
-        $result = empty($method) ? null : $wf->$method($this->params);
+        $result = empty($method) ? null : $workflow->$method($this->params);
 
         $next_id=$result ? $this->then_id : $this->else_id;
         // We invert result in case if "!" is used. We need this for right logging
         if($this->has_not) {
             $result=!$result;
         }
-        $wf->get_logger()->debug("Selector result ".
+        $workflow->get_logger()->debug("Selector result ".
             ($result ? "TRUE":"FALSE")." -> ".($result ? "THEN":"ELSE").
-        " next node: ".$wf->get_node_name_by_id($next_id));
+        " next node: ".$workflow->get_node_name_by_id($next_id));
 
         return $next_id;
     }
 
+    /**
+     * @param $node_name
+     * @return null|string
+     */
     public static function get_type_by_name($node_name) {
 
         $pattern='/^!*'.static::NODE_PREFIX.'.+/i';
@@ -60,7 +68,7 @@ class NodeSelector extends NodeAction {
             return static::class;
         }
 
-        return false;
+        return null;
     }
 
 

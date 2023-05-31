@@ -38,6 +38,7 @@ class Logger implements ILogger
 
     /**
      * @param IStorage|null $storage
+     * @param $log_level
      * @return ILogger
      */
     public static function instance(IStorage $storage = null, $log_level = self::WARN): ILogger
@@ -82,7 +83,8 @@ class Logger implements ILogger
     }
 
     /**
-     * @param $log_channel
+     * @param $log_level
+     * @return void
      */
     public function set_log_level($log_level = self::WARN)
     {
@@ -93,7 +95,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function debug($message, array $context = array())
+    public function debug($message, array $context = array()): void
     {
         if($this->log_level >= self::$levels[self::DEBUG]) {
             $this->write_log($message);
@@ -104,7 +106,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function info($message, array $context = array())
+    public function info($message, array $context = array()): void
     {
         if($this->log_level >= self::$levels[self::INFO]) {
             $this->write_log($message, self::INFO);
@@ -115,7 +117,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function warn($message, array $context = array())
+    public function warn($message, array $context = array()): void
     {
         if($this->log_level >= self::$levels[self::WARN]) {
             $this->write_log($message, self::WARN);
@@ -126,7 +128,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function error($message, array $context = array())
+    public function error($message, array $context = array()): void
     {
         if($this->log_level >= self::$levels[self::ERROR]) {
             $this->write_log($message, self::ERROR);
@@ -137,7 +139,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function emergency($message, array $context = array())
+    public function emergency($message, array $context = array()): void
     {
         $this->log(__FUNCTION__, $message, $context);
     }
@@ -146,7 +148,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function alert($message, array $context = array())
+    public function alert($message, array $context = array()): void
     {
         $this->log(__FUNCTION__, $message, $context);
     }
@@ -155,7 +157,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function critical($message, array $context = array())
+    public function critical($message, array $context = array()): void
     {
         $this->log(__FUNCTION__, $message, $context);
     }
@@ -164,7 +166,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function warning($message, array $context = array())
+    public function warning($message, array $context = array()): void
     {
         $this->log(__FUNCTION__, $message, $context);
     }
@@ -173,7 +175,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function notice($message, array $context = array())
+    public function notice($message, array $context = array()): void
     {
         $this->log(__FUNCTION__, $message, $context);
     }
@@ -183,7 +185,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function log($level, $message, array $context = array())
+    public function log($level, $message, array $context = array()): void
     {
         $logContext = empty($context) ? '' : "\nContext: ".json_encode($context);
         $this->debug($level.' '.$message.$logContext);
@@ -220,7 +222,7 @@ class Logger implements ILogger
     {
 
         if (!is_string($message)) {
-            $message = var_export($message);
+            $message = var_export($message, true);
         }
 
         $timestamp = date(self::TIMESTAMP_FORMAT);
