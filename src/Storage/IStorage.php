@@ -8,14 +8,14 @@ use Workflow\Event;
 
 interface IStorage
 {
-    const STATUS_FINISHED = 'FINISHED';
-    const STATUS_ACTIVE = 'ACTIVE';
-    const STATUS_IN_PROGRESS = 'INPROGRESS';
-    const STATUS_FAILED = 'FAILED';
-    const STATUS_PROCESSED = 'PROCESSED';
-    const STATUS_NO_SUBSCRIBERS = 'NOSUBSCR';
+    public const STATUS_FINISHED = 'FINISHED';
+    public const STATUS_ACTIVE = 'ACTIVE';
+    public const STATUS_IN_PROGRESS = 'INPROGRESS';
+    public const STATUS_FAILED = 'FAILED';
+    public const STATUS_PROCESSED = 'PROCESSED';
+    public const STATUS_NO_SUBSCRIBERS = 'NOSUBSCR';
 
-    const CLEANUP_TIME = 3600;
+    public const CLEANUP_TIME = 3600;
 
     /**
      * Returns the instance of Storage (IStorage interface)

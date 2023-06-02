@@ -40,12 +40,12 @@ trait SystemUtils {
         return self::linux_process_exists($pid);
     }
 
-    private static function linux_process_exists($pid) {
+    private static function linux_process_exists($pid): bool {
         clearstatcache();
         return file_exists( "/proc/$pid" );
     }
 
-    private static function windows_process_exists($pid) {
+    private static function windows_process_exists($pid): bool {
 
         $task_list=[];
         if(time() > self::$win_list_time) {
@@ -68,10 +68,10 @@ trait SystemUtils {
     }
 
 
-    protected function get_lock_string($host='', $pid=0) {
+    protected function get_lock_string($host='', $pid=0): string {
         $host=$host ?: gethostname();
         $pid=$pid ?: getmypid();
-        $rnd=mt_rand();
+        $rnd=random_int(0, mt_getrandmax());
         return implode(self::$LOCK_DELIMITER, [$host,$pid,$rnd]);
     }
 

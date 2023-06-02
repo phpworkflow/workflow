@@ -12,25 +12,25 @@ use Workflow\Workflow;
 interface INode {
 
     // ID of the last WF node
-    const LAST_NODE = -1;
+    public const LAST_NODE = -1;
 
     // Node parameters definition
-    const P_ID='id';
-    const P_NAME='name';
-    const P_TYPE='type';
-    const P_METHOD='method';
-    const P_LABEL='label';
-    const P_TIMEOUT='timeout';
-    const P_TIME='time';
-    const P_PARAMS='params';
-    const P_THEN='then';
-    const P_ELSE='else';
-    const P_NEXT_NODE='next_node';
-    const P_ONE_TIME='one_time';
-    const P_COUNTER='counter';
-    const P_TARGET_ID='target_id';
+    public const P_ID='id';
+    public const P_NAME='name';
+    public const P_TYPE='type';
+    public const P_METHOD='method';
+    public const P_LABEL='label';
+    public const P_TIMEOUT='timeout';
+    public const P_TIME='time';
+    public const P_PARAMS='params';
+    public const P_THEN='then';
+    public const P_ELSE='else';
+    public const P_NEXT_NODE='next_node';
+    public const P_ONE_TIME='one_time';
+    public const P_COUNTER='counter';
+    public const P_TARGET_ID='target_id';
 
-    const OP_NOT='!';
+    public const OP_NOT='!';
 
     /**
      * @param Workflow $workflow

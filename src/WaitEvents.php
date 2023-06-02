@@ -11,7 +11,7 @@ trait WaitEvents {
     /**
      * @param string $event_type
      */
-    public function start_wait_for($event_type) {
+    public function start_wait_for($event_type): void {
         if (!in_array($event_type, $this->wait_for)) {
             $this->wait_for[] = $event_type;
         }
@@ -21,7 +21,7 @@ trait WaitEvents {
     /**
      * @param $event_type
      */
-    public function stop_wait_for($event_type) {
+    public function stop_wait_for($event_type): void {
 
         $p = array_search($event_type, $this->wait_for);
         if ($p !== false) {
@@ -38,7 +38,7 @@ trait WaitEvents {
      *
      * @return bool
      */
-    public function is_waiting_for($event_type) {
+    public function is_waiting_for($event_type): bool {
         return in_array($event_type, $this->wait_for);
     }
 
