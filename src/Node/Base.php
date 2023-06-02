@@ -10,6 +10,7 @@ abstract class Base implements INode
     public const NODE_PREFIX = "-----";
 
     protected int $id;
+
     protected string $name;
     protected int $next_node_id = self::LAST_NODE;
     protected ?int $node_id_to_go = null;
@@ -51,10 +52,10 @@ abstract class Base implements INode
     }
 
     /**
-     * @param $node_name
-     * @return string | null
+     * @param string $node_name
+     * @return string|null
      */
-    public static function get_type_by_name($node_name): ?string
+    public static function get_type_by_name(string $node_name): ?string
     {
 
         $pattern = '/^' . static::NODE_PREFIX . '.+/i';

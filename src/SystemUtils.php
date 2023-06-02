@@ -6,14 +6,14 @@
  */
 
 namespace Workflow;
-
+use Exception;
 
 trait SystemUtils {
-    static private $LOCK_DELIMITER='+';
+    static private string $LOCK_DELIMITER='+';
 
     // Data cache for windows
-    private static $win_process_list=[];
-    private static $win_list_time=0;
+    private static array $win_process_list=[];
+    private static int $win_list_time=0;
 
     /**
      * @param $hostname
@@ -22,7 +22,7 @@ trait SystemUtils {
      *
      * @return bool
      */
-    public static function process_exists($hostname, $pid, $active_hosts = []) {
+    public static function process_exists($hostname, $pid, array $active_hosts = []): bool {
 
         if(!in_array($hostname, $active_hosts, true)) {
             return false;
@@ -68,14 +68,21 @@ trait SystemUtils {
     }
 
 
-    protected function get_lock_string($host='', $pid=0): string {
+    /**
+     * @param string $host
+     * @param int $pid
+     * @return string
+     *
+     * @throws Exception
+     */
+    protected function get_lock_string(string $host='', int $pid=0): string {
         $host=$host ?: gethostname();
         $pid=$pid ?: getmypid();
         $rnd=random_int(0, mt_getrandmax());
         return implode(self::$LOCK_DELIMITER, [$host,$pid,$rnd]);
     }
 
-    protected function get_host_pid_from_lock_string($lock) {
+    protected function get_host_pid_from_lock_string($lock): array {
         $lockArr=explode(self::$LOCK_DELIMITER, $lock);
 
         return count($lockArr) < 2

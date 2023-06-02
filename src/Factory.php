@@ -8,7 +8,7 @@ class Factory implements IFactory {
      * @return Workflow
      * @throws RuntimeException
      */
-    public function new_workflow($type) {
+    public function new_workflow($type): ?Workflow {
         if(class_exists($type)) {
             return new $type();
         }
@@ -21,7 +21,7 @@ class Factory implements IFactory {
      * @return Event
      * @throws RuntimeException
      */
-    public function new_event($type) {
+    public function new_event($type): Event {
         if(class_exists($type)) {
             return new $type();
         }

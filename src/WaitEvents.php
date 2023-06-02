@@ -11,7 +11,7 @@ trait WaitEvents {
     /**
      * @param string $event_type
      */
-    public function start_wait_for($event_type): void {
+    public function start_wait_for(string $event_type): void {
         if (!in_array($event_type, $this->wait_for)) {
             $this->wait_for[] = $event_type;
         }

@@ -157,7 +157,7 @@ class GoodsSaleWorkflow extends Workflow
         error_log("NO PAYMENT! Bad customer\n");
     }
 
-    public function if_customer_pay_for_goods()
+    public function if_customer_pay_for_goods(): bool
     {
         $payment = $this->get_context("customer_pay_for_goods");
         return !empty($payment);
@@ -165,7 +165,7 @@ class GoodsSaleWorkflow extends Workflow
 
 // This methods should be implemented by programmer BEGIN
 
-    public function get_supported_business_objects()
+    public function get_supported_business_objects(): array
     {
         return [];
     }

@@ -8,6 +8,7 @@ use PDOStatement as Statement;
 use Exception;
 use LogicException;
 use RuntimeException;
+use JsonException;
 
 use Workflow\Factory;
 use Workflow\Logger\Logger;
@@ -29,7 +30,6 @@ class Postgres implements IStorage
 
     public const HOST_DELETE_DELAY = 300;
 
-    /* @var IStorage $_storage */
     private static ?IStorage $_storage = null;
 
     private static string $dsn = '';
@@ -37,13 +37,13 @@ class Postgres implements IStorage
     /**
      * @var string
      */
-    private $db_structure;
+    private string $db_structure;
 
     /* @var ILogger $logger */
     private ILogger $logger;
 
     /* @var PDO $db */
-    private \PDO $db;
+    private PDO $db;
 
     private bool $isDebug;
 
@@ -111,14 +111,22 @@ class Postgres implements IStorage
         $this->isDebug = (getenv(self::ENV_DEBUG_WF_SQL) !== false);
     }
 
-    private function createSubscription(Workflow $workflow, $is_new = true): void
+    /**
+     * @param Workflow $workflow
+     * @param bool $is_new
+     * @return void
+     * @throws Exception
+     */
+    private function createSubscription(Workflow $workflow, bool $is_new = true): void
     {
         /**
          * @var Subscription $s
          */
         foreach ($workflow->get_subscription($is_new) as $s) {
             // Workflow can subscribe to several values of some event filter
-            $values = is_array($s->context_value) ? $s->context_value : [$s->context_value];
+            $values = is_array($s->context_value)
+                ? $s->context_value
+                : [$s->context_value];
 
             foreach ($values as $v) {
                 $sql = 'SELECT workflow_id from subscription
@@ -162,6 +170,7 @@ class Postgres implements IStorage
      * @param $key
      * @param $value
      * @return bool
+     * @throws RuntimeException
      */
     private function workflow_exists($type, $key, $value): bool {
 
@@ -190,6 +199,7 @@ SQL;
      * @param Workflow $workflow
      * @param false $unique
      * @return bool
+     * @throws JsonException
      */
     public function create_workflow(Workflow $workflow, $unique = false): bool
     {
@@ -244,6 +254,7 @@ SQL;
     /**
      * @param $workflow_id
      * @return bool
+     * @throws Exception
      */
     public function finish_workflow($workflow_id): bool
     {
@@ -298,9 +309,9 @@ SQL;
 
     /**
      * @param Event $event
-     * @return bool|int
+     * @return null|int
      */
-    public function create_event(Event $event)
+    public function create_event(Event $event): ?int
     {
 
         $sql = "insert into event (type, context, status, workflow_id)
@@ -344,7 +355,7 @@ SQL;
         } catch (Exception $e) {
             $this->logToStderr($e);
             $this->logger->error($e->getMessage());
-            return false;
+            return null;
         }
 
         return $countEvents;
@@ -354,8 +365,9 @@ SQL;
     /**
      * Returns the array with arrays of workflow IDs grouped by type
      * @return array<int|string, mixed>
+     * @throws JsonException
      */
-    public function get_active_workflow_by_type($limit = 10): array
+    public function get_active_workflow_by_type(int $limit = 10): array
     {
         /** @noinspection SqlConstantCondition */
         $sql = <<<SQL
@@ -397,6 +409,7 @@ SQL;
     /**
      * Returns the array with IDs of workflows for execution
      * @return int[]|string[]
+     * @throws RuntimeException
      */
     public function get_active_workflow_ids($limit = self::TASK_LIST_SIZE_LIMIT): array
     {
@@ -427,8 +440,9 @@ SQL;
      * @param bool $doLock
      *
      * @return Workflow|null
+     * @throws Exception
      */
-    public function get_workflow($id, $doLock = true)
+    public function get_workflow(int $id, bool $doLock = true): ?Workflow
     {
 
         $lockId = $this->get_lock_string();
@@ -474,7 +488,7 @@ SQL;
         $workflow->set_id($id);
 
         // We finish workflow in case of error_limit reached
-        if ($workflow->many_errors($row['error_count'])) {
+        if ($workflow->many_errors((int)$row['error_count'])) {
             $workflow->finish();
         }
 
@@ -504,8 +518,8 @@ SQL;
     }
 
     /**
-     * @param $sql
-     * @param $params
+     * @param string $sql
+     * @param array $params
      *
      * @return false|Statement
      * @throws RuntimeException
@@ -517,7 +531,7 @@ SQL;
 
         if($this->isDebug) {
             error_log($sql);
-            error_log(json_encode($params, JSON_THROW_ON_ERROR));
+            error_log(json_encode($params));
             if(!$result) {
                 error_log('ERROR: '.$statement->errorCode().' '.json_encode($statement->errorInfo()));
             }
@@ -594,17 +608,26 @@ SQL;
         return true;
     }
 
-    public function close_event(Event $event)
+    /**
+     * @param Event $event
+     * @return bool
+     * @throws RuntimeException
+     */
+    public function close_event(Event $event): bool
     {
         $sql = 'UPDATE event set status = :status, finished_at = current_timestamp
               WHERE event_id = :event_id';
 
-        return $this->doSql($sql, [
+        return (bool)($this->doSql($sql, [
             'event_id' => $event->get_id(),
             'status' => self::STATUS_PROCESSED
-        ]);
+        ]));
     }
 
+    /**
+     * @return void
+     * @throws RuntimeException
+     */
     private function update_hosts(): void
     {
         $sql = 'INSERT INTO host ( hostname ) VALUES (:hostname)
@@ -623,6 +646,7 @@ SQL;
 
     /**
      * @return string[]
+     * @throws RuntimeException
      */
     private function get_active_hosts(): array
     {
@@ -690,11 +714,11 @@ SQL;
     }
 
     /**
-     * @param $workflow_id
+     * @param int $workflow_id
      * @return Event[]
      * @throws Exception
      */
-    public function get_events($workflow_id): array
+    public function get_events(int $workflow_id): array
     {
         $sql = "select event_id, type, context from event where 
                 status = :status 
@@ -719,11 +743,11 @@ SQL;
     }
 
     /**
-     * @param $log_message
-     * @param $workflow_id
+     * @param string $log_message
+     * @param int $workflow_id
      * @return void
      */
-    public function store_log($log_message, $workflow_id = 0): void
+    public function store_log(string $log_message, int $workflow_id = 0): void
     {
         $this->doSql('insert into log (workflow_id, log_text, pid, host) values (:workflow_id, :log_text, :pid, :host)', [
             'workflow_id' => $workflow_id,

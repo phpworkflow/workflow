@@ -3,24 +3,26 @@ namespace Workflow;
 
 use Workflow\Storage\IStorage;
 use Exception;
+use JsonException;
+
 class Event {
 
     /* @var int $workflow_id */
-    protected $workflow_id=0;
-    protected $event_id=0;
-    protected $type;
-    protected $status=0;
+    protected int $workflow_id=0;
+    protected int $event_id=0;
+    protected string $type;
+    protected string $status;
     /* @var Context $context */
-    protected $context=null;
+    protected Context $context;
 
     /**
-     * @param $type
+     * @param string $type
      * @param $context
-     * @param $status
+     * @param string $status
      *
      * @throws Exception
      */
-    public function __construct($type, $context=null, $status=IStorage::STATUS_ACTIVE) {
+    public function __construct(string $type, $context=null, string $status=IStorage::STATUS_ACTIVE) {
 
         $this->type=$type;
         $this->status=$status;
@@ -46,7 +48,7 @@ class Event {
     /**
      * @return int
      */
-    public function get_id() {
+    public function get_id(): int {
         return $this->event_id;
     }
 
@@ -54,21 +56,21 @@ class Event {
     /**
      * @return string
      */
-    public function get_type() {
+    public function get_type(): string {
         return $this->type;
     }
 
     /**
-     * @return int
+     * @return string
      */
-    public function get_status() {
+    public function get_status(): string {
         return $this->status;
     }
 
     /**
-     * @param int $status of the event
+     * @param string $status of the event
      */
-    public function set_status($status): void {
+    public function set_status(string $status): void {
         $this->status = $status;
     }
 
@@ -80,7 +82,7 @@ class Event {
         $this->context->set($key, $value);
     }
 
-    public function get_key_data() {
+    public function get_key_data(): array {
         return $this->context->get_all();
     }
 
@@ -94,10 +96,10 @@ class Event {
 
     /**
      * Returns the serialized context of the event
-     *
      * @return string
+     * @throws JsonException
      */
-    public function getContext() {
+    public function getContext(): string {
         return $this->context->serialize();
     }
 

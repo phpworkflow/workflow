@@ -10,7 +10,7 @@ class NodeSelector extends NodeAction {
 
     protected $then_id;
     protected $else_id;
-    protected $has_not=false;
+    protected bool $has_not=false;
 
     public function __construct(array &$parameters) {
         parent::__construct($parameters);
@@ -57,10 +57,10 @@ class NodeSelector extends NodeAction {
     }
 
     /**
-     * @param $node_name
+     * @param string $node_name
      * @return null|string
      */
-    public static function get_type_by_name($node_name): ?string {
+    public static function get_type_by_name(string $node_name): ?string {
 
         $pattern='/^!*'.static::NODE_PREFIX.'.+/i';
 

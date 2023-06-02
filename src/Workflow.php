@@ -2,7 +2,9 @@
 
 namespace Workflow;
 use Exception;
+use JsonException;
 use LogicException;
+
 use Workflow\Node\Base;
 use Workflow\Node\Validator;
 use Workflow\Node\INode;
@@ -33,37 +35,36 @@ abstract class Workflow
     // Workflow pause after exception, seconds
     public const PAUSE_AFTER_EXCEPTION = 60;
 
-    protected $workflow_id = 0;
+    protected int $workflow_id = 0;
+
     /* @var WorkflowLogger $logger */
     protected ILogger $logger;
 
     /* @var Context $context */
     protected Context $workflow_context;
-    protected $is_subscription_updated = false;
+    protected bool $is_subscription_updated = false;
 
-    protected $call_stack = [];    // Current execution node
-    protected $current_node;    // Current execution node
-    protected $start_time = 0;  // Time of the next command execution
+    protected array $call_stack = [];    // Current execution node
+    protected int $current_node;    // Current execution node
+    protected int $start_time = 0;  // Time of the next command execution
     protected $wait_for = [];
-    /**
-     * @var Event
-     */
-    protected $last_event = null;
+
+    protected ?Event $last_event = null;
 
     /** @var callable $sync_callback */
     private $sync_callback = null;
 
     protected array $events_map;
 
-    static protected $compiled_nodes = [];
-    static protected $nodes_map = [];
+    static protected array $compiled_nodes = [];
+    static protected array $nodes_map = [];
 
-    protected $error_limit = self::DEFAULT_ERROR_LIMIT;   // Maximum number of errors for workflow
+    protected int $error_limit = self::DEFAULT_ERROR_LIMIT;   // Maximum number of errors for workflow
 
     /**
      * @var string
      */
-    protected $error_info = '';         // Used for debugging and error handling
+    protected string $error_info = '';         // Used for debugging and error handling
 
     protected array $unique_properties;
 
@@ -73,6 +74,7 @@ abstract class Workflow
      * @param array $process_nodes
      * @param array $events_map
      * @param array $unique_properties
+     * @throws Exception
      */
     public function __construct(array $process_nodes = [], array $events_map = [], array $unique_properties = [])
     {
@@ -109,20 +111,21 @@ abstract class Workflow
         self::$nodes_map[$class] = $map;
     }
 
-    public function get_logger()
+    public function get_logger(): ILogger
     {
         return $this->logger;
     }
 
-    public function get_id()
+    public function get_id(): int
     {
         return $this->workflow_id;
     }
 
     /**
      * @return array
+     * @throws JsonException
      */
-    public function get_uniqueness() {
+    public function get_uniqueness(): array {
         if(empty($this->unique_properties)) {
             throw new LogicException('Please specify $unique_properties parameter for workflow');
         }
@@ -156,7 +159,7 @@ abstract class Workflow
      * @param int $error_count
      * @return bool
      */
-    public function many_errors($error_count): bool
+    public function many_errors(int $error_count): bool
     {
         if ($this->error_limit === 0) {
             return false;
@@ -170,12 +173,12 @@ abstract class Workflow
      * @param string $serialized_state
      * @throws Exception
      */
-    public function set_state($serialized_state): void
+    public function set_state(string $serialized_state): void
     {
         $this->workflow_context->unserialize($serialized_state);
         // Counters are inside workflow_context, we don't need to assign them to something
         // TODO replace member variables with getters and remove members
-        $this->start_time = $this->workflow_context->get(self::CONTEXT_START_TIME);
+        $this->start_time = $this->workflow_context->get(self::CONTEXT_START_TIME) ?: 0;
         $this->current_node = $this->workflow_context->get(self::CONTEXT_CURRENT_NODE);
         $this->call_stack = $this->workflow_context->get(self::CONTEXT_CALL_STACK);
         $this->wait_for = $this->workflow_context->get(self::CONTEXT_WAIT_FOR);
@@ -183,8 +186,9 @@ abstract class Workflow
 
     /** Returns the serialized context of the workflow
      * @return string
+     * @throws JsonException
      */
-    public function get_state()
+    public function get_state():string
     {
         $this->workflow_context
             ->set(self::CONTEXT_START_TIME, $this->start_time)
@@ -228,7 +232,7 @@ abstract class Workflow
      * @param $no_update_check boolean - no check of subscription update
      * @return array $result
      */
-    public function get_subscription($no_update_check = false)
+    public function get_subscription(bool $no_update_check = false): array
     {
 
         $result = [];
@@ -277,7 +281,7 @@ abstract class Workflow
      * @return Event
      * @throws Exception
      */
-    private function handle_event(Event $event)
+    private function handle_event(Event $event): ?Event
     {
         $event_type = $event->get_type();
         $this->logger->debug("Event $event_type arrived.");
@@ -366,11 +370,11 @@ abstract class Workflow
         throw new Exception("Node $node_name does not exists");
     }
 
-    /*
-     * @return INode $node
+    /**
+     * @return INode|null
      * @throws Exception
      */
-    private function get_current_node()
+    private function get_current_node(): ?INode
     {
         if (isset(self::$compiled_nodes[get_class($this)][$this->current_node])) {
             return self::$compiled_nodes[get_class($this)][$this->current_node];
@@ -387,7 +391,7 @@ abstract class Workflow
     /**
      * @return int
      */
-    public function now()
+    public function now(): int
     {
         return time();
     }
@@ -396,7 +400,7 @@ abstract class Workflow
      * @param Event[] $events array of Event objects
      * @return bool
      */
-    public function run(array $events = [])
+    public function run(array $events = []): bool
     {
         $this->error_info = '';
 
@@ -478,7 +482,7 @@ abstract class Workflow
      *
      * @return bool
      */
-    public function node_exists($node_name)
+    public function node_exists($node_name): bool
     {
         return isset(self::$nodes_map[get_class($this)][$node_name]);
     }
@@ -487,16 +491,17 @@ abstract class Workflow
      * Return current node for execution, will be used for testing proposal
      * @return string
      */
-    public function get_current_node_name()
+    public function get_current_node_name(): string
     {
         return self::$compiled_nodes[get_class($this)][$this->current_node]->get_name();
     }
 
     /**
      * Return current node for execution, will be used for testing proposal
+     * @param int $node_id
      * @return string
      */
-    public function get_node_name_by_id($node_id)
+    public function get_node_name_by_id(int $node_id): string
     {
         return self::$compiled_nodes[get_class($this)][$node_id]->get_name();
     }
@@ -504,9 +509,9 @@ abstract class Workflow
 
     /**
      * Return current node for execution, will be used for testing proposal
-     * @return string
+     * @return int
      */
-    public function get_current_node_id()
+    public function get_current_node_id(): int
     {
         return $this->current_node;
     }
@@ -558,17 +563,14 @@ abstract class Workflow
     }
 
     /**
-     * @return integer
+     * @return int
      */
-    public function get_start_time()
+    public function get_start_time(): int
     {
         return $this->start_time;
     }
 
-    /**
-     *
-     */
-    public function get_type()
+    public function get_type(): string
     {
         return get_class($this);
     }
@@ -597,7 +599,7 @@ abstract class Workflow
     /**
      * Put process to execution queue
      */
-    public function put_to_storage(IStorage $storage, $unique = false)
+    public function put_to_storage(IStorage $storage, $unique = false): int
     {
         return $storage->create_workflow($this, $unique)
             ? $this->workflow_id
@@ -605,9 +607,9 @@ abstract class Workflow
     }
 
     /**
-     * @param string $node_id
+     * @param int $node_id
      */
-    public function add_to_call_stack($node_id): void
+    public function add_to_call_stack(int $node_id): void
     {
         $this->call_stack[] = $node_id;
     }
@@ -622,7 +624,7 @@ abstract class Workflow
             throw new Exception("Can't return the call stack is empty");
         }
         $saved_node = array_pop($this->call_stack);
-        $this->logger->debug("Return from procedure to " . $this->get_node_name_by_id($saved_node));
+        $this->logger->debug("Return from procedure to " . $this->get_node_name_by_id((int)$saved_node));
         $this->set_current_node($saved_node);
     }
 
@@ -646,7 +648,7 @@ abstract class Workflow
     /**
      * @return int
      */
-    protected function get_pause_after_exception()
+    protected function get_pause_after_exception(): int
     {
         return self::PAUSE_AFTER_EXCEPTION;
     }
@@ -662,7 +664,7 @@ abstract class Workflow
     /**
      * @return string
      */
-    public function get_error_info()
+    public function get_error_info(): string
     {
         return $this->error_info;
     }

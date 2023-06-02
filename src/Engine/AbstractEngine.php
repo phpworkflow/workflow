@@ -9,7 +9,7 @@ use Workflow\Storage\IStorage;
 abstract class AbstractEngine
 {
     /** @var AbstractEngine $instance */
-    static protected $instance;
+    static protected AbstractEngine $instance;
 
     protected IStorage $storage;
 
@@ -24,7 +24,7 @@ abstract class AbstractEngine
         $this->exit = false;
     }
 
-    public static function instance(IStorage $storage, ILogger $logger)
+    public static function instance(IStorage $storage, ILogger $logger):self
     {
         if (empty(self::$instance)) {
             self::$instance = new static($storage, $logger);

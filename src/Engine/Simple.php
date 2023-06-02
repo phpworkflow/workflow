@@ -7,8 +7,8 @@ use Workflow\Workflow;
 use Workflow\Event;
 
 class Simple extends AbstractEngine {
-    private $num_cycles=1;
-    private $sleep_time=3;
+    private int $num_cycles=1;
+    private int $sleep_time=3;
 
     public function __construct(IStorage $storage, ILogger $logger)
     {

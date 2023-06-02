@@ -12,7 +12,7 @@ class Logger implements ILogger
 {
     public const TIMESTAMP_FORMAT = 'Y-m-d H:i:s';
 
-    static protected $levels = [
+    static protected array $levels = [
         self::ERROR => 0,
         self::WARN => 1,
         self::INFO => 2,
@@ -28,16 +28,16 @@ class Logger implements ILogger
     private static ?Logger $logger = null;
 
     /**
-     * @var string
+     * @var int
      */
-    protected $log_level;
+    protected int $log_level;
 
     /**
      * @param IStorage|null $storage
-     * @param $log_level
+     * @param string $log_level
      * @return ILogger
      */
-    public static function instance(IStorage $storage = null, $log_level = self::WARN): ILogger
+    public static function instance(IStorage $storage = null, string $log_level = self::WARN): ILogger
     {
         if (self::$logger === null) {
             self::$logger = new Logger();
@@ -53,10 +53,10 @@ class Logger implements ILogger
     }
 
     /**
-     * Logger constructor.
+     * @param string $log_level
      * @param int $log_channel
      */
-    protected function __construct($log_level = self::WARN, $log_channel = self::LOG_DATABASE)
+    protected function __construct(string $log_level = self::WARN, int $log_channel = self::LOG_DATABASE)
     {
         $this->log_level = $log_level;
         $this->log_channel = $log_channel;
@@ -79,10 +79,10 @@ class Logger implements ILogger
     }
 
     /**
-     * @param $log_level
+     * @param string $log_level
      * @return void
      */
-    public function set_log_level($log_level = self::WARN): void
+    public function set_log_level(string $log_level = self::WARN): void
     {
         $this->log_level = self::$levels[$log_level] ?? 0;
     }
@@ -199,10 +199,10 @@ class Logger implements ILogger
     }
 
     /**
-     * @param $message
+     * @param string $message
      * @param int $workflowId
      */
-    protected function store_log($message, $workflowId = 0) {
+    protected function store_log(string $message, int $workflowId = 0) {
         if(self::$storage) {
             self::$storage->store_log($message, $workflowId);
             return;
@@ -214,7 +214,7 @@ class Logger implements ILogger
      * @param $message
      * @param string $level
      */
-    protected function write_log($message, $level = self::DEBUG)
+    protected function write_log($message, string $level = self::DEBUG)
     {
 
         if (!is_string($message)) {

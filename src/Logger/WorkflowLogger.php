@@ -6,7 +6,7 @@ use Psr\Log\LoggerInterface;
 
 class WorkflowLogger extends Logger implements LoggerInterface
 {
-    protected $workflowId;
+    protected int $workflowId;
 
     public static function create(int $workflowId, $log_level = self::DEBUG, $log_channel = self::LOG_DATABASE): ILogger
     {
@@ -20,7 +20,7 @@ class WorkflowLogger extends Logger implements LoggerInterface
         $this->workflowId = $workflowId;
     }
 
-    protected function store_log($message, $workflowId = 0) {
+    protected function store_log($message, int $workflowId = 0) {
         parent::store_log($message, $workflowId ?: $this->workflowId);
     }
 }

@@ -10,9 +10,14 @@ class Validator {
     private int $cnt=1;
     protected array $process_nodes;   // Array with the process description
     private array $list_nodes=[];        // Array for validation process nodes
-    protected $compiled_nodes=[];
+    protected array $compiled_nodes=[];
     private Workflow $workflow;
 
+    /**
+     * @param array $process_nodes
+     * @param Workflow $wf
+     * @throws Exception
+     */
     public function __construct(array $process_nodes, Workflow $wf) {
         $this->process_nodes = $process_nodes ?: [];
         $this->workflow=$wf;
@@ -20,7 +25,7 @@ class Validator {
         $this->validate();
     }
 
-    public function get_prepared_nodes() {
+    public function get_prepared_nodes(): array {
         return $this->compiled_nodes;
     }
 
@@ -36,11 +41,11 @@ class Validator {
 
     /**
      * @param $node_arr
-     * @param $parent_next_node
+     * @param int $parent_next_node
      * @return void
      * @throws Exception
      */
-    private function _validate(&$node_arr, $parent_next_node=INode::LAST_NODE): void {
+    private function _validate(&$node_arr, int $parent_next_node=INode::LAST_NODE): void {
 
         // All nodes should have required parameters
         foreach($node_arr as &$node) {
@@ -142,10 +147,10 @@ class Validator {
 
     /**
      * @param $node_name
-     * @return int
+     * @return string
      * @throws Exception
      */
-    private function _get_type_by_name($node_name) {
+    private function _get_type_by_name($node_name): string {
         foreach(self::$node_types as $node_type) {
             $result=$node_type::get_type_by_name($node_name);
 

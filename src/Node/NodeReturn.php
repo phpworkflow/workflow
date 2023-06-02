@@ -6,7 +6,6 @@ use Exception;
 class NodeReturn extends Base {
     public const PRIORITY=1;
     public const NODE_PREFIX='return';
-    protected $label;
 
     public function __construct(array $parameters) {
         parent::__construct($parameters);
@@ -23,10 +22,10 @@ class NodeReturn extends Base {
     }
 
     /**
-     * @param $node_name
+     * @param string $node_name
      * @return string|null
      */
-    public static function get_type_by_name($node_name): ?string {
+    public static function get_type_by_name(string $node_name): ?string {
 
         if(strcmp(self::NODE_PREFIX,$node_name) == 0) {
             return static::class;

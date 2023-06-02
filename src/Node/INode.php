@@ -61,7 +61,7 @@ interface INode {
      * @param string $node_name
      * @return string | null
      */
-    public static function get_type_by_name($node_name): ?string;
+    public static function get_type_by_name(string $node_name): ?string;
 
     /**
      * @return mixed

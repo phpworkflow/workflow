@@ -1,6 +1,7 @@
 <?php
 namespace Workflow;
 use Exception;
+use JsonException;
 
 class Context {
     public const NAMESPACE_DEFAULT='default';
@@ -8,13 +9,13 @@ class Context {
     public const NAMESPACE_COUNTER='counter';
     public const NAMESPACE_SUBSCRIPTION='subscription';
 
-    private $data;
+    private array $data;
 
     public function __construct() {
         $this->data=[self::NAMESPACE_DEFAULT => []];
     }
 
-    public function set($key, $value, $namespace=self::NAMESPACE_DEFAULT) {
+    public function set($key, $value, $namespace=self::NAMESPACE_DEFAULT): self {
         $this->data[$namespace][$key]=$value;
         return $this;
     }
@@ -29,11 +30,15 @@ class Context {
         }
     }
 
-    public function get_all($namespace=self::NAMESPACE_DEFAULT) {
+    public function get_all($namespace=self::NAMESPACE_DEFAULT):array {
         return $this->data[$namespace] ?? [];
     }
 
-    public function serialize() {
+    /**
+     * @return string
+     * @throws JsonException
+     */
+    public function serialize(): string {
         $str=json_encode($this->data, JSON_THROW_ON_ERROR);
         return $str;
     }
