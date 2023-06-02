@@ -30,7 +30,7 @@ class Logger implements ILogger
     /**
      * @var int
      */
-    protected int $log_level;
+    protected string $log_level;
 
     /**
      * @param IStorage|null $storage
