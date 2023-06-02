@@ -13,15 +13,15 @@ use Workflow\Example\RegularAction;
 use Workflow\Workflow;
 
 class TPostgres extends Postgres {
-    const TEST_CLEANUP_TIME = 2;
-    const TEST_WAIT_TIME = 3;
+    public const TEST_CLEANUP_TIME = 2;
+    public const TEST_WAIT_TIME = 3;
 
     public function __construct(PDO $connection)
     {
         parent::__construct($connection);
     }
 
-    protected function get_execution_time_limit()
+    protected function get_execution_time_limit(): int
     {
         return self::TEST_CLEANUP_TIME;
     }
@@ -35,9 +35,9 @@ class PostgresTest extends TestCase
 {
     private const TEST_CUSTOMER_ID = 3456;
 
-    private $connection;
+    private PDO $connection;
 
-    private $storage;
+    private TPostgres $storage;
 
     public function setUp(): void
     {
@@ -46,7 +46,7 @@ class PostgresTest extends TestCase
         $this->storage = new TPostgres($this->connection);
     }
 
-    public function testCleanup() {
+    public function testCleanup(): void {
 
         $storage = $this->storage; //new TPostgres($this->connection);
 
@@ -77,7 +77,7 @@ class PostgresTest extends TestCase
 
     }
 
-    public function testCreateUniqueWorkflow() {
+    public function testCreateUniqueWorkflow(): void {
         $workflow1=new GoodsSaleWorkflow();
         $workflow1->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER,  self::TEST_CUSTOMER_ID);
         $result = $this->storage->create_workflow($workflow1, true);
@@ -97,7 +97,7 @@ class PostgresTest extends TestCase
         $this->storage->finish_workflow($workflow2->get_id());
     }
 
-    public function testCreateUniqueWorkflowDifferentTypesSameKey() {
+    public function testCreateUniqueWorkflowDifferentTypesSameKey(): void {
         $workflow1=new GoodsSaleWorkflow();
         $workflow1->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER, self::TEST_CUSTOMER_ID);
         $result = $this->storage->create_workflow($workflow1, true);
@@ -127,7 +127,7 @@ class PostgresTest extends TestCase
     }
 
 
-    public function testCreateEvent() {
+    public function testCreateEvent(): void {
         $storage = $this->storage; //new TPostgres($this->connection);
 
         self::assertNotEmpty($storage);
@@ -146,7 +146,7 @@ class PostgresTest extends TestCase
         $events = $storage->get_events($workflowId);
 
         self::assertNotEmpty($events);
-        $workflow->set_sync_callback(function(Workflow $workflow, ?Event $event=null) use ($storage) {
+        $workflow->set_sync_callback(function(Workflow $workflow, ?Event $event=null) use ($storage): void {
             if($event !== null) {
                 $storage->close_event($event);
             }
@@ -162,11 +162,11 @@ class PostgresTest extends TestCase
         self::assertEmpty($events);
     }
 
-    public function testGetPidFromLock() {
+    public function testGetPidFromLock(): void {
         $storage = $this->storage; //new TPostgres($this->connection);
         $lock = 'a51fad2e4cef+37+733511867';
 
-        list($host, $pid) = $storage->get_host_pid_from_lock_string($lock);
+        [$host, $pid] = $storage->get_host_pid_from_lock_string($lock);
         self::assertEquals(37, $pid);
         self::assertEquals('a51fad2e4cef', $host);
     }
@@ -175,7 +175,7 @@ class PostgresTest extends TestCase
      * @return void
      * @throws Exception
      */
-    public function testFinishWorkflow() {
+    public function testFinishWorkflow(): void {
         $active_ids = $this->storage->get_active_workflow_ids();
         $workflow_id = array_shift($active_ids);
 
@@ -204,12 +204,12 @@ select status from workflow where workflow_id = :workflow_id
 ";
         $stm = $this->doSql($sql, ['workflow_id' => $workflow_id]);
         $rows = $stm->fetchAll();
-        $statuses = array_map(function ($row) {return $row['status'];}, $rows);
+        $statuses = array_map(fn($row) => $row['status'], $rows);
 
         self::assertFalse(in_array(IStorage::STATUS_ACTIVE, $statuses));
     }
 
-    private function doSql($sql, $params)
+    private function doSql(string $sql, array $params)
     {
         $statement = $this->connection->prepare($sql);
         $result = $statement->execute($params);
@@ -217,7 +217,7 @@ select status from workflow where workflow_id = :workflow_id
         return $statement;
     }
 
-    private function createWorkflow($storage) {
+    private function createWorkflow(IStorage $storage) {
         $workflow = new RegularAction();
         return $workflow->put_to_storage($storage);
     }

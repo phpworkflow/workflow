@@ -21,21 +21,18 @@ class Postgres implements IStorage
 {
     use SystemUtils;
 
-    const ENV_DEBUG_WF_SQL = 'DEBUG_WF_SQL';
+    public const ENV_DEBUG_WF_SQL = 'DEBUG_WF_SQL';
 
-    const UNIQUENESS = 'UNIQUENESS';
+    public const UNIQUENESS = 'UNIQUENESS';
 
-    const TASK_LIST_SIZE_LIMIT = 100;
+    public const TASK_LIST_SIZE_LIMIT = 100;
 
-    const HOST_DELETE_DELAY = 300;
+    public const HOST_DELETE_DELAY = 300;
 
     /* @var IStorage $_storage */
-    private static $_storage = null;
+    private static ?IStorage $_storage = null;
 
-    /**
-     * @var string
-     */
-    private static $dsn = '';
+    private static string $dsn = '';
 
     /**
      * @var string
@@ -43,10 +40,10 @@ class Postgres implements IStorage
     private $db_structure;
 
     /* @var ILogger $logger */
-    private $logger;
+    private ILogger $logger;
 
     /* @var PDO $db */
-    private $db;
+    private \PDO $db;
 
     private bool $isDebug;
 
@@ -114,7 +111,7 @@ class Postgres implements IStorage
         $this->isDebug = (getenv(self::ENV_DEBUG_WF_SQL) !== false);
     }
 
-    private function createSubscription(Workflow $workflow, $is_new = true)
+    private function createSubscription(Workflow $workflow, $is_new = true): void
     {
         /**
          * @var Subscription $s
@@ -166,7 +163,7 @@ class Postgres implements IStorage
      * @param $value
      * @return bool
      */
-    private function workflow_exists($type, $key, $value) {
+    private function workflow_exists($type, $key, $value): bool {
 
         $sql = <<<SQL
 select 1 from workflow where workflow_id in (
@@ -194,11 +191,11 @@ SQL;
      * @param false $unique
      * @return bool
      */
-    public function create_workflow(Workflow $workflow, $unique = false)
+    public function create_workflow(Workflow $workflow, $unique = false): bool
     {
 
         if($unique) {
-            list($key, $value) = $workflow->get_uniqueness();
+            [$key, $value] = $workflow->get_uniqueness();
             if($this->workflow_exists($workflow->get_type(), $key, $value)) {
                 return false;
             }
@@ -248,7 +245,7 @@ SQL;
      * @param $workflow_id
      * @return bool
      */
-    public function finish_workflow($workflow_id)
+    public function finish_workflow($workflow_id): bool
     {
         $workflow = $this->get_workflow($workflow_id);
 
@@ -356,9 +353,9 @@ SQL;
 
     /**
      * Returns the array with arrays of workflow IDs grouped by type
-     * @return array
+     * @return array<int|string, mixed>
      */
-    public function get_active_workflow_by_type($limit = 10)
+    public function get_active_workflow_by_type($limit = 10): array
     {
         /** @noinspection SqlConstantCondition */
         $sql = <<<SQL
@@ -391,7 +388,7 @@ SQL;
 
         $result = [];
         while ($row = $statement->fetch()) {
-            $result[$row['type']] = json_decode($row['wf_list']);
+            $result[$row['type']] = json_decode($row['wf_list'], null, 512, JSON_THROW_ON_ERROR);
         }
 
         return $result;
@@ -399,9 +396,9 @@ SQL;
 
     /**
      * Returns the array with IDs of workflows for execution
-     * @return array
+     * @return int[]|string[]
      */
-    public function get_active_workflow_ids($limit = self::TASK_LIST_SIZE_LIMIT)
+    public function get_active_workflow_ids($limit = self::TASK_LIST_SIZE_LIMIT): array
     {
         /** @noinspection SqlConstantCondition */
         $sql = 'select distinct workflow_id from ( select wf.workflow_id, wf.scheduled_at, random() rnd
@@ -487,7 +484,7 @@ SQL;
     /**
      * @return bool
      */
-    protected function is_created()
+    protected function is_created(): bool
     {
         $structure = file_get_contents($this->db_structure);
         if (!preg_match_all('/CREATE TABLE (\w+)/im', $structure, $match)) {
@@ -513,14 +510,14 @@ SQL;
      * @return false|Statement
      * @throws RuntimeException
      */
-    private function doSql($sql, $params)
+    private function doSql(string $sql, array $params)
     {
         $statement = $this->db->prepare($sql);
         $result = $statement->execute($params);
 
         if($this->isDebug) {
             error_log($sql);
-            error_log(json_encode($params));
+            error_log(json_encode($params, JSON_THROW_ON_ERROR));
             if(!$result) {
                 error_log('ERROR: '.$statement->errorCode().' '.json_encode($statement->errorInfo()));
             }
@@ -533,7 +530,7 @@ SQL;
         return $statement;
     }
 
-    public function save_workflow(Workflow $workflow, $unlock = true)
+    public function save_workflow(Workflow $workflow, $unlock = true): bool
     {
         try {
 
@@ -608,7 +605,7 @@ SQL;
         ]);
     }
 
-    private function update_hosts()
+    private function update_hosts(): void
     {
         $sql = 'INSERT INTO host ( hostname ) VALUES (:hostname)
                     ON CONFLICT (hostname)
@@ -624,12 +621,15 @@ SQL;
         );
     }
 
-    private function get_active_hosts()
+    /**
+     * @return string[]
+     */
+    private function get_active_hosts(): array
     {
         $result = $this->doSql("select hostname from host", []);
 
         $hosts = [];
-        while (list($hostname) = $result->fetch(PDO::FETCH_NUM)) {
+        while ([$hostname] = $result->fetch(PDO::FETCH_NUM)) {
             $hosts[] = $hostname;
         }
         return $hosts;
@@ -639,7 +639,7 @@ SQL;
      * Restore workflows with errors during execution
      * @return void
      */
-    public function cleanup()
+    public function cleanup(): void
     {
         $this->update_hosts();
 
@@ -663,8 +663,8 @@ SQL;
         }
 
         while ($row = $result->fetch(PDO::FETCH_NUM)) {
-            list($workflow_id, $lock) = $row;
-            list($host, $pid) = $this->get_host_pid_from_lock_string($lock);
+            [$workflow_id, $lock] = $row;
+            [$host, $pid] = $this->get_host_pid_from_lock_string($lock);
             if (self::process_exists($host, $pid, $active_hosts)) {
                 $this->logger->warn("CLEANUP: Workflow $workflow_id - is running for long time");
                 continue;
@@ -684,7 +684,7 @@ SQL;
         }
     }
 
-    protected function get_execution_time_limit()
+    protected function get_execution_time_limit(): int
     {
         return self::CLEANUP_TIME;
     }
@@ -694,7 +694,7 @@ SQL;
      * @return Event[]
      * @throws Exception
      */
-    public function get_events($workflow_id)
+    public function get_events($workflow_id): array
     {
         $sql = "select event_id, type, context from event where 
                 status = :status 
@@ -723,7 +723,7 @@ SQL;
      * @param $workflow_id
      * @return void
      */
-    public function store_log($log_message, $workflow_id = 0)
+    public function store_log($log_message, $workflow_id = 0): void
     {
         $this->doSql('insert into log (workflow_id, log_text, pid, host) values (:workflow_id, :log_text, :pid, :host)', [
             'workflow_id' => $workflow_id,

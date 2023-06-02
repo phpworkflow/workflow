@@ -16,7 +16,7 @@ class WorkflowLogger extends Logger implements LoggerInterface
         return $logger;
     }
 
-    public function setWorkflowId($workflowId) {
+    public function setWorkflowId($workflowId): void {
         $this->workflowId = $workflowId;
     }
 

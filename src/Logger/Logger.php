@@ -10,7 +10,7 @@ use Workflow\Storage\IStorage;
  */
 class Logger implements ILogger
 {
-    const TIMESTAMP_FORMAT = 'Y-m-d H:i:s';
+    public const TIMESTAMP_FORMAT = 'Y-m-d H:i:s';
 
     static protected $levels = [
         self::ERROR => 0,
@@ -23,13 +23,9 @@ class Logger implements ILogger
      */
     protected $log_channel;
 
-    /** @var IStorage $storage */
-    private static $storage = null;
+    private static ?IStorage $storage = null;
 
-    /**
-     * @var Logger
-     */
-    private static $logger = null;
+    private static ?Logger $logger = null;
 
     /**
      * @var string
@@ -77,7 +73,7 @@ class Logger implements ILogger
     /**
      * @param $log_channel
      */
-    public function set_log_channel($log_channel)
+    public function set_log_channel($log_channel): void
     {
         $this->log_channel = $log_channel;
     }
@@ -86,7 +82,7 @@ class Logger implements ILogger
      * @param $log_level
      * @return void
      */
-    public function set_log_level($log_level = self::WARN)
+    public function set_log_level($log_level = self::WARN): void
     {
         $this->log_level = self::$levels[$log_level] ?? 0;
     }
@@ -95,7 +91,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function debug($message, array $context = array()): void
+    public function debug($message, array $context = []): void
     {
         if($this->log_level >= self::$levels[self::DEBUG]) {
             $this->write_log($message);
@@ -106,7 +102,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function info($message, array $context = array()): void
+    public function info($message, array $context = []): void
     {
         if($this->log_level >= self::$levels[self::INFO]) {
             $this->write_log($message, self::INFO);
@@ -117,7 +113,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function warn($message, array $context = array()): void
+    public function warn($message, array $context = []): void
     {
         if($this->log_level >= self::$levels[self::WARN]) {
             $this->write_log($message, self::WARN);
@@ -128,7 +124,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function error($message, array $context = array()): void
+    public function error($message, array $context = []): void
     {
         if($this->log_level >= self::$levels[self::ERROR]) {
             $this->write_log($message, self::ERROR);
@@ -139,7 +135,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function emergency($message, array $context = array()): void
+    public function emergency($message, array $context = []): void
     {
         $this->log(__FUNCTION__, $message, $context);
     }
@@ -148,7 +144,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function alert($message, array $context = array()): void
+    public function alert($message, array $context = []): void
     {
         $this->log(__FUNCTION__, $message, $context);
     }
@@ -157,7 +153,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function critical($message, array $context = array()): void
+    public function critical($message, array $context = []): void
     {
         $this->log(__FUNCTION__, $message, $context);
     }
@@ -166,7 +162,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function warning($message, array $context = array()): void
+    public function warning($message, array $context = []): void
     {
         $this->log(__FUNCTION__, $message, $context);
     }
@@ -175,7 +171,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function notice($message, array $context = array()): void
+    public function notice($message, array $context = []): void
     {
         $this->log(__FUNCTION__, $message, $context);
     }
@@ -185,7 +181,7 @@ class Logger implements ILogger
      * @param $message
      * @param array $context
      */
-    public function log($level, $message, array $context = array()): void
+    public function log($level, $message, array $context = []): void
     {
         $logContext = empty($context) ? '' : "\nContext: ".json_encode($context);
         $this->debug($level.' '.$message.$logContext);

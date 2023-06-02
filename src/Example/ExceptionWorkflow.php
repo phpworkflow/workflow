@@ -20,7 +20,7 @@ class ExceptionWorkflow extends Workflow {
         parent::__construct($process_nodes);
     }
 
-    public function action1() {
+    public function action1(): void {
         $cnt = $this->get_context('cnt') ?: 0;
         $cnt++;
         $this->set_context('cnt',$cnt);

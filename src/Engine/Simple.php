@@ -25,14 +25,14 @@ class Simple extends AbstractEngine {
         pcntl_signal(SIGTERM, [$this, "sigHandler"]);
     }
 
-    public function run(array $workflows = []) {
+    public function run(array $workflows = []): void {
         while($this->num_cycles-- && !$this->exit) {
             $this->execute_workflows($workflows);
             sleep($this->sleep_time);
         }
     }
 
-    private function execute_workflows(array $workflows = []) {
+    private function execute_workflows(array $workflows = []): void {
         $this->logger->debug("Start");
         $wf_ids=$workflows ?: $this->storage->get_active_workflow_ids();
 
@@ -52,7 +52,7 @@ class Simple extends AbstractEngine {
 
             if(!$workflow->is_finished()) {
                 // Function is executed after successful event processing
-                $workflow->set_sync_callback(function(Workflow $workflow, Event $event = null) {
+                $workflow->set_sync_callback(function(Workflow $workflow, Event $event = null): void {
                     if($event !== null) {
                         $this->storage->close_event($event);
                     }
@@ -75,12 +75,12 @@ class Simple extends AbstractEngine {
         $this->logger->debug("Finish");
     }
 
-    public function set_params($num_cycles, $sleep_time) {
+    public function set_params($num_cycles, $sleep_time): void {
         $this->num_cycles=$num_cycles;
         $this->sleep_time=$sleep_time;
     }
 
-    public function sigHandler($signo)
+    public function sigHandler($signo): void
     {
         $this->logger->info("Signal $signo. Exiting...");
         $this->exit = true;

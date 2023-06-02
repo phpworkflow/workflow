@@ -4,7 +4,7 @@ namespace Workflow\Example;
 use Workflow\Workflow;
 
 class RegularAction extends Workflow {
-    const TEST_EVENT = 'TEST_EVENT';
+    public const TEST_EVENT = 'TEST_EVENT';
 
     function __construct() {
         $process_nodes = [
@@ -24,7 +24,7 @@ class RegularAction extends Workflow {
         parent::__construct($process_nodes, $events_map);
     }
 
-    public function action1() {
+    public function action1(): void {
         $cnt = $this->get_context('cnt') ?: 0;
         $cnt++;
 

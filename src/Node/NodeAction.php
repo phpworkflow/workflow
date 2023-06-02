@@ -5,7 +5,7 @@ use Exception;
 use Workflow\Workflow;
 
 class NodeAction extends Base {
-    const PRIORITY=0;
+    public const PRIORITY=0;
 
     protected $method;
     protected $params=[];
@@ -35,7 +35,7 @@ class NodeAction extends Base {
      * @param $node_name
      * @return string
      */
-    public static function get_type_by_name($node_name) {
+    public static function get_type_by_name($node_name): ?string {
         return static::class;
     }
 
@@ -45,7 +45,7 @@ class NodeAction extends Base {
      * @return void
      * @throws Exception
      */
-    public static function fix_node(Workflow $workflow, array &$node) {
+    public static function fix_node(Workflow $workflow, array &$node): void {
 
         if (!isset($node[self::P_METHOD]) ) {
             $node[self::P_METHOD] = $node[self::P_NAME];

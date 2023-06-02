@@ -25,24 +25,24 @@ class CommandsQueue extends Workflow {
 
 // This methods should be implemented by programmer BEGIN
 
-    public function end() {
+    public function end(): void {
         error_log("WF Finished");
     }
 
-    public function action1() {
+    public function action1(): void {
         error_log('Method: '.__METHOD__);
     }
 
-    public function action2() {
+    public function action2(): void {
         error_log('Method: '.__METHOD__);
     }
 
-    public function action3() {
+    public function action3(): void {
         error_log('Method: '.__METHOD__);
     }
 
 // This methods should be implemented by programmer BEGIN
-    public function get_supported_business_objects() {
+    public function get_supported_business_objects(): array {
         return [];
     }
 }

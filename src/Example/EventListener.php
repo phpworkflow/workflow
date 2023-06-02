@@ -4,7 +4,7 @@ namespace Workflow\Example;
 use Workflow\Workflow;
 
 class EventListener extends Workflow {
-    const LISTENER_EVENT = 'LISTENER_EVENT';
+    public const LISTENER_EVENT = 'LISTENER_EVENT';
 
     function __construct() {
         $process_nodes = [
@@ -27,7 +27,7 @@ class EventListener extends Workflow {
         parent::__construct($process_nodes, $events_map);
     }
 
-    public function event_handler() {
+    public function event_handler(): void {
         if(!$this->last_event) {
             return;
         }
@@ -37,7 +37,7 @@ class EventListener extends Workflow {
         $this->logger->info("Event: ".$this->last_event->get_id(). "Total: $ec events arrived");
     }
 
-    public function action1() {
+    public function action1(): void {
         $this->logger->info("ACTION1");
     }
 }

@@ -28,7 +28,7 @@ class WaitWorkflow2 extends WaitWorkflow {
 
 class WaitTest extends  TestCase
 {
-    public function testWaitToday()
+    public function testWaitToday(): void
     {
         $startTime=(new DateTime());
         $startTime->add(new DateInterval('PT5M'));
@@ -44,7 +44,7 @@ class WaitTest extends  TestCase
         self::assertTrue(abs($startTime->getTimestamp() - $workflow->get_start_time()) <= 1);
     }
 
-    public function testWaitTomorrow()
+    public function testWaitTomorrow(): void
     {
         $startTime=(new DateTime());
 

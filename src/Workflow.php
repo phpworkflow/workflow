@@ -8,36 +8,37 @@ use Workflow\Node\Validator;
 use Workflow\Node\INode;
 use Workflow\Storage\IStorage;
 use Workflow\Logger\WorkflowLogger;
+use Workflow\Logger\ILogger;
 
 abstract class Workflow
 {
 //    extends Process {
     use WaitEvents;
 
-    const CONTEXT_CALL_STACK = 'call_stack';
-    const CONTEXT_CURRENT_NODE = 'node';
-    const CONTEXT_CURRENT_NODE_NAME = 'node_name';
-    const CONTEXT_START_TIME = 'start_time';
-    const CONTEXT_WAIT_FOR = 'wait_for';
+    public const CONTEXT_CALL_STACK = 'call_stack';
+    public const CONTEXT_CURRENT_NODE = 'node';
+    public const CONTEXT_CURRENT_NODE_NAME = 'node_name';
+    public const CONTEXT_START_TIME = 'start_time';
+    public const CONTEXT_WAIT_FOR = 'wait_for';
 
-    const EVENT_ON = "event_on";
-    const EVENT_TARGET = "event_target";
-    const EVENT_FILTER = "event_filter";
+    public const EVENT_ON = "event_on";
+    public const EVENT_TARGET = "event_target";
+    public const EVENT_FILTER = "event_filter";
 
     // Endless cycles protection
-    const MAX_ITERATIONS = 150;
+    public const MAX_ITERATIONS = 150;
 
-    const DEFAULT_ERROR_LIMIT = 3;
+    public const DEFAULT_ERROR_LIMIT = 3;
 
     // Workflow pause after exception, seconds
-    const PAUSE_AFTER_EXCEPTION = 60;
+    public const PAUSE_AFTER_EXCEPTION = 60;
 
     protected $workflow_id = 0;
     /* @var WorkflowLogger $logger */
-    protected $logger;
+    protected ILogger $logger;
 
     /* @var Context $context */
-    protected $workflow_context = null;
+    protected Context $workflow_context;
     protected $is_subscription_updated = false;
 
     protected $call_stack = [];    // Current execution node
@@ -52,7 +53,7 @@ abstract class Workflow
     /** @var callable $sync_callback */
     private $sync_callback = null;
 
-    protected $events_map = [];
+    protected array $events_map;
 
     static protected $compiled_nodes = [];
     static protected $nodes_map = [];
@@ -64,7 +65,7 @@ abstract class Workflow
      */
     protected $error_info = '';         // Used for debugging and error handling
 
-    protected $unique_properties =[];
+    protected array $unique_properties;
 
     /**
      * Basic initialization. parent::__construct should be executed in subclasses constructor
@@ -98,7 +99,7 @@ abstract class Workflow
         $this->logger = WorkflowLogger::create($this->workflow_id);
     }
 
-    static private function prepare_nodes_map($class)
+    static private function prepare_nodes_map($class): void
     {
         $map = [];
         /* @var INode $node */
@@ -139,12 +140,12 @@ abstract class Workflow
         ksort($keys);
 
         return [
-            json_encode(array_keys($keys)),
-            json_encode(array_values($keys))
+            json_encode(array_keys($keys), JSON_THROW_ON_ERROR),
+            json_encode(array_values($keys), JSON_THROW_ON_ERROR)
         ];
     }
 
-    public function set_id($workflowId)
+    public function set_id($workflowId): void
     {
         $this->workflow_id = $workflowId;
         $this->logger->setWorkflowId($workflowId);
@@ -155,7 +156,7 @@ abstract class Workflow
      * @param int $error_count
      * @return bool
      */
-    public function many_errors($error_count)
+    public function many_errors($error_count): bool
     {
         if ($this->error_limit === 0) {
             return false;
@@ -169,7 +170,7 @@ abstract class Workflow
      * @param string $serialized_state
      * @throws Exception
      */
-    public function set_state($serialized_state)
+    public function set_state($serialized_state): void
     {
         $this->workflow_context->unserialize($serialized_state);
         // Counters are inside workflow_context, we don't need to assign them to something
@@ -201,7 +202,7 @@ abstract class Workflow
         return $this->workflow_context->get($key, Context::NAMESPACE_USER);
     }
 
-    public function set_context($key, $value)
+    public function set_context($key, $value): void
     {
         $this->workflow_context->set($key, $value, Context::NAMESPACE_USER);
 
@@ -264,7 +265,7 @@ abstract class Workflow
         return $this->workflow_context->get($counter_name, Context::NAMESPACE_COUNTER);
     }
 
-    public function set_counter($counter_name, $value)
+    public function set_counter($counter_name, $value): void
     {
         $this->workflow_context->set($counter_name, $value, Context::NAMESPACE_COUNTER);
     }
@@ -307,7 +308,7 @@ abstract class Workflow
      * @return void
      * @throws Exception
      */
-    private function _run()
+    private function _run(): void
     {
         /* @var INode $current_node */
         // $next_node_id=INode::LAST_NODE;
@@ -450,7 +451,7 @@ abstract class Workflow
      *
      * @throws Exception
      */
-    public function goto_node($node_name)
+    public function goto_node($node_name): bool
     {
 
         if ($this->node_exists($node_name)) {
@@ -515,7 +516,7 @@ abstract class Workflow
      * Return current process status
      * @return boolean TRUE - process finished
      */
-    public function is_finished()
+    public function is_finished(): bool
     {
         return ($this->current_node == INode::LAST_NODE);
     }
@@ -523,7 +524,7 @@ abstract class Workflow
     /**
      * Force finish workflow
      */
-    public function finish()
+    public function finish(): void
     {
         $this->current_node = INode::LAST_NODE;
     }
@@ -532,7 +533,7 @@ abstract class Workflow
      * Reset wait timer, process can flow
      * @param mixed $time
      */
-    public function set_exec_time($time = 0)
+    public function set_exec_time($time = 0): void
     {
         $type = gettype($time);
         switch ($type) {
@@ -576,7 +577,7 @@ abstract class Workflow
      * Allow to assign function to save workflow and event state to storage
      * @param $sync_callback
      */
-    public function set_sync_callback($sync_callback)
+    public function set_sync_callback($sync_callback): void
     {
         $this->sync_callback = $sync_callback;
     }
@@ -606,7 +607,7 @@ abstract class Workflow
     /**
      * @param string $node_id
      */
-    public function add_to_call_stack($node_id)
+    public function add_to_call_stack($node_id): void
     {
         $this->call_stack[] = $node_id;
     }
@@ -630,7 +631,7 @@ abstract class Workflow
      * it can be used for initialization of some workflow objects
      * @return boolean $result - the workflow is executed in case on_start returns TRUE
      */
-    public function on_start()
+    public function on_start(): bool
     {
         return true;
     }
@@ -638,7 +639,7 @@ abstract class Workflow
     /*
      * Is executed after workflow main flow
      */
-    public function on_finish()
+    public function on_finish(): void
     {
     }
 
@@ -653,7 +654,7 @@ abstract class Workflow
     /**
      * @return bool
      */
-    public function is_error()
+    public function is_error(): bool
     {
         return $this->error_info !== '';
     }
@@ -670,7 +671,7 @@ abstract class Workflow
      * @param $logChannel
      * TODO camelCase, type
      */
-    public function set_log_channel($logChannel)
+    public function set_log_channel($logChannel): void
     {
         $this->logger->set_log_channel($logChannel);
     }

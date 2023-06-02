@@ -5,8 +5,8 @@ use Exception;
 use Workflow\Workflow;
 
 class NodeSelector extends NodeAction {
-    const PRIORITY=1;
-    const NODE_PREFIX="if_";
+    public const PRIORITY=1;
+    public const NODE_PREFIX="if_";
 
     protected $then_id;
     protected $else_id;
@@ -15,7 +15,7 @@ class NodeSelector extends NodeAction {
     public function __construct(array &$parameters) {
         parent::__construct($parameters);
 
-        if(count($parameters[INode::P_THEN])>0) {
+        if(count($parameters[INode::P_THEN] ?? [])>0) {
             $first_sub_node=$parameters[INode::P_THEN][0];
             $this->then_id=$first_sub_node[INode::P_ID];
         }
@@ -23,7 +23,7 @@ class NodeSelector extends NodeAction {
             $this->then_id=$this->next_node_id;
         }
 
-        if(count($parameters[INode::P_ELSE])>0) {
+        if(count($parameters[INode::P_ELSE] ?? [])>0) {
             $first_sub_node=$parameters[INode::P_ELSE][0];
             $this->else_id=$first_sub_node[INode::P_ID];
         }
@@ -60,7 +60,7 @@ class NodeSelector extends NodeAction {
      * @param $node_name
      * @return null|string
      */
-    public static function get_type_by_name($node_name) {
+    public static function get_type_by_name($node_name): ?string {
 
         $pattern='/^!*'.static::NODE_PREFIX.'.+/i';
 
@@ -72,7 +72,7 @@ class NodeSelector extends NodeAction {
     }
 
 
-    public static function fix_node(Workflow $workflow, array &$node) {
+    public static function fix_node(Workflow $workflow, array &$node): void {
 
         // Set right THEN, ELSE attributes for NOT operator in selector
 

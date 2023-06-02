@@ -7,9 +7,9 @@ use Workflow\Node\INode;
 use Workflow\Example\GoodsSaleWorkflow;
 
 class SuccessFlowTest extends TestCase {
-    const CUSTOMER_ID = 25;
+    public const CUSTOMER_ID = 25;
 
-    const ORDER_ID = 592;
+    public const ORDER_ID = 592;
 
     protected $workflow;
 
@@ -22,7 +22,7 @@ class SuccessFlowTest extends TestCase {
      * @return void
      * @throws Exception
      */
-    function test_success() {
+    function test_success(): void {
         $wf=$this->workflow;
         $wf->run();
         self::assertEquals('goto_select_goods', $wf->get_current_node_name());

@@ -4,8 +4,8 @@ use Workflow\Workflow;
 use Exception;
 
 class NodeGoto extends Base  {
-    const PRIORITY=1;
-    const NODE_PREFIX="goto_";
+    public const PRIORITY=1;
+    public const NODE_PREFIX="goto_";
 
     protected $label;
     protected $one_time=false;
@@ -56,7 +56,7 @@ class NodeGoto extends Base  {
 
     }
 
-    public static function fix_node(Workflow $workflow, array &$node) {
+    public static function fix_node(Workflow $workflow, array &$node): void {
         // Create label by node name if not exists
         if ( !isset($node[self::P_LABEL]) ) {
             $label=substr($node[self::P_NAME], strpos($node[self::P_NAME],'_')+1);

@@ -6,12 +6,12 @@ use Workflow\Workflow;
 
 class Validator {
     /** @var INode[] $node_types */
-    static private $node_types=[];
-    private $cnt=1;
-    protected $process_nodes;   // Array with the process description
-    private $list_nodes=[];        // Array for validation process nodes
+    static private array $node_types=[];
+    private int $cnt=1;
+    protected array $process_nodes;   // Array with the process description
+    private array $list_nodes=[];        // Array for validation process nodes
     protected $compiled_nodes=[];
-    private $workflow;
+    private Workflow $workflow;
 
     public function __construct(array $process_nodes, Workflow $wf) {
         $this->process_nodes = $process_nodes ?: [];
@@ -28,7 +28,7 @@ class Validator {
      * @return void
      * @throws Exception
      */
-    public function validate() {
+    public function validate(): void {
         $this->_validate($this->process_nodes);
         $this->_validate_labels($this->process_nodes);
         $this->compiled_nodes[INode::LAST_NODE]=new NodeEnd();
@@ -40,7 +40,7 @@ class Validator {
      * @return void
      * @throws Exception
      */
-    private function _validate(&$node_arr, $parent_next_node=INode::LAST_NODE) {
+    private function _validate(&$node_arr, $parent_next_node=INode::LAST_NODE): void {
 
         // All nodes should have required parameters
         foreach($node_arr as &$node) {
@@ -54,7 +54,7 @@ class Validator {
             $this->list_nodes[$node[INode::P_ID]] = $node[INode::P_NAME];
 
             // Define name of next node
-            $next_node_id=$pointer + 1 < count($node_arr) ?
+            $next_node_id=$pointer + 1 < (is_countable($node_arr) ? count($node_arr) : 0) ?
                 $node_arr[$pointer + 1][INode::P_ID] : $parent_next_node;
 
             $pointer++;
@@ -157,7 +157,7 @@ class Validator {
         throw new Exception("Unknown type of node: $node_name");
     }
 
-    private function _load_nodes() {
+    private function _load_nodes(): void {
 
         if(!empty(self::$node_types)) {
             return;
@@ -175,7 +175,7 @@ class Validator {
             }
         }
 
-        usort(self::$node_types, function($a, $b) {
+        usort(self::$node_types, function($a, $b): int {
             /** @var INode $a */
             $p1=$a::get_priority();
             /** @var INode $b */

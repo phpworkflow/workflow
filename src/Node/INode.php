@@ -41,19 +41,19 @@ interface INode {
     /**
      * @return mixed
      */
-    public function get_name();
+    public function get_name(): string;
 
     /**
      * @return mixed
      */
-    public function get_id();
+    public function get_id(): int;
 
     /**
      * @param Workflow $workflow
      * @param array $node
      * @return void
      */
-    public static function fix_node(Workflow $workflow, array &$node);
+    public static function fix_node(Workflow $workflow, array &$node): void;
 
     /**
      * Define type of the command by command name: if_ - selector,  goto_ - goto, etc
@@ -61,7 +61,7 @@ interface INode {
      * @param string $node_name
      * @return string | null
      */
-    public static function get_type_by_name($node_name);
+    public static function get_type_by_name($node_name): ?string;
 
     /**
      * @return mixed

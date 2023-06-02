@@ -4,8 +4,8 @@ use Workflow\Workflow;
 use Exception;
 
 class NodeReturn extends Base {
-    const PRIORITY=1;
-    const NODE_PREFIX='return';
+    public const PRIORITY=1;
+    public const NODE_PREFIX='return';
     protected $label;
 
     public function __construct(array $parameters) {
@@ -26,7 +26,7 @@ class NodeReturn extends Base {
      * @param $node_name
      * @return string|null
      */
-    public static function get_type_by_name($node_name) {
+    public static function get_type_by_name($node_name): ?string {
 
         if(strcmp(self::NODE_PREFIX,$node_name) == 0) {
             return static::class;

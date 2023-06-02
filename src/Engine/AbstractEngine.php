@@ -11,16 +11,11 @@ abstract class AbstractEngine
     /** @var AbstractEngine $instance */
     static protected $instance;
 
-    /** @var IStorage $storage */
-    protected $storage;
+    protected IStorage $storage;
 
-    /** @var ILogger $logger */
-    protected $logger;
+    protected ILogger $logger;
 
-    /**
-     * @var boolean $exit
-     */
-    protected $exit;
+    protected bool $exit;
 
     protected function __construct(IStorage $storage, ILogger $logger)
     {

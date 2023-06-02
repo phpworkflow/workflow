@@ -3,10 +3,10 @@ namespace Workflow;
 use Exception;
 
 class Context {
-    const NAMESPACE_DEFAULT='default';
-    const NAMESPACE_USER='user';
-    const NAMESPACE_COUNTER='counter';
-    const NAMESPACE_SUBSCRIPTION='subscription';
+    public const NAMESPACE_DEFAULT='default';
+    public const NAMESPACE_USER='user';
+    public const NAMESPACE_COUNTER='counter';
+    public const NAMESPACE_SUBSCRIPTION='subscription';
 
     private $data;
 
@@ -23,7 +23,7 @@ class Context {
         return $this->data[$namespace][$key] ?? null;
     }
 
-    public function set_all(array $data, $namespace=self::NAMESPACE_DEFAULT) {
+    public function set_all(array $data, $namespace=self::NAMESPACE_DEFAULT): void {
         foreach($data as $k => $v) {
             $this->set($k, $v, $namespace);
         }
@@ -34,7 +34,7 @@ class Context {
     }
 
     public function serialize() {
-        $str=json_encode($this->data);
+        $str=json_encode($this->data, JSON_THROW_ON_ERROR);
         return $str;
     }
 
@@ -44,7 +44,7 @@ class Context {
      * @throws Exception
      */
     public function unserialize($str) {
-        $buffer=json_decode($str, true) ?: [];
+        $buffer=json_decode($str, true, 512, JSON_THROW_ON_ERROR) ?: [];
 
         if(!isset($buffer[self::NAMESPACE_DEFAULT])) {
             $buffer[self::NAMESPACE_DEFAULT]=[];

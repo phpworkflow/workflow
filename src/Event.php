@@ -68,15 +68,15 @@ class Event {
     /**
      * @param int $status of the event
      */
-    public function set_status($status) {
+    public function set_status($status): void {
         $this->status = $status;
     }
 
-    public function set_key_data($key, $value) {
+    public function set_key_data($key, $value): void {
         $this->context->set($key, $value, Context::NAMESPACE_SUBSCRIPTION);
     }
 
-    public function set_additional_data($key, $value) {
+    public function set_additional_data($key, $value): void {
         $this->context->set($key, $value);
     }
 
@@ -107,7 +107,7 @@ class Event {
      * @return void
      * @throws Exception
      */
-    public function setContext($serializedState) {
+    public function setContext($serializedState): void {
         $this->context->unserialize($serializedState);
     }
 

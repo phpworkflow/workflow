@@ -6,13 +6,13 @@ use Workflow\Workflow;
 
 abstract class Base implements INode
 {
-    const PRIORITY = -1;
-    const NODE_PREFIX = "-----";
+    public const PRIORITY = -1;
+    public const NODE_PREFIX = "-----";
 
-    protected $id;
-    protected $name;
-    protected $next_node_id = self::LAST_NODE;
-    protected $node_id_to_go;
+    protected int $id;
+    protected string $name;
+    protected int $next_node_id = self::LAST_NODE;
+    protected ?int $node_id_to_go = null;
 
     public function __construct(array $parameters)
     {
@@ -21,7 +21,7 @@ abstract class Base implements INode
         $this->next_node_id = $parameters[INode::P_NEXT_NODE];
     }
 
-    public function set_node_id_to_go($node_id) {
+    public function set_node_id_to_go(int $node_id): void {
         $this->node_id_to_go = $node_id;
     }
 
@@ -35,17 +35,17 @@ abstract class Base implements INode
         return $this->next_node_id;
     }
 
-    public function get_name()
+    public function get_name():string
     {
         return $this->name;
     }
 
-    public function get_id()
+    public function get_id():int
     {
         return $this->id;
     }
 
-    public static function get_priority()
+    public static function get_priority(): int
     {
         return static::PRIORITY;
     }
@@ -54,7 +54,7 @@ abstract class Base implements INode
      * @param $node_name
      * @return string | null
      */
-    public static function get_type_by_name($node_name)
+    public static function get_type_by_name($node_name): ?string
     {
 
         $pattern = '/^' . static::NODE_PREFIX . '.+/i';
@@ -72,7 +72,7 @@ abstract class Base implements INode
      * @param array $node
      * @return void
      */
-    public static function fix_node(Workflow $workflow, array &$node)
+    public static function fix_node(Workflow $workflow, array &$node): void
     {
     }
 
@@ -99,7 +99,7 @@ abstract class Base implements INode
         return new $class_name($node);
     }
 
-    public function __toString()
+    public function __toString(): string
     {
         return "$this->id $this->name";
     }

@@ -10,20 +10,20 @@ use Exception;
 class GoodsSaleWorkflow extends Workflow
 {
 
-    const NUM_CYCLES = 9;
-    const EXEC_TIMEOUT = 1;
-    const CONTEXT_VALUE_NAME = 'test_execution_time';
-    const CTX_SOME_EVENT = 'some_event';
+    public const NUM_CYCLES = 9;
+    public const EXEC_TIMEOUT = 1;
+    public const CONTEXT_VALUE_NAME = 'test_execution_time';
+    public const CTX_SOME_EVENT = 'some_event';
 
     // Workflow events
-    const EVENT_GOODS_SELECTED = 'GOODS_SELECTED';
-    const EVENT_SUPPLIER_SENT_GOODS = 'SUPPLIER_SENT_GOODS';
-    const EVENT_CUSTOMER_PAY_FOR_GOODS = 'CUSTOMER_PAY_FOR_GOODS';
-    const EVENT_CONTEXT_MODIFIER = 'CONTEXT_MODIFIER';
+    public const EVENT_GOODS_SELECTED = 'GOODS_SELECTED';
+    public const EVENT_SUPPLIER_SENT_GOODS = 'SUPPLIER_SENT_GOODS';
+    public const EVENT_CUSTOMER_PAY_FOR_GOODS = 'CUSTOMER_PAY_FOR_GOODS';
+    public const EVENT_CONTEXT_MODIFIER = 'CONTEXT_MODIFIER';
 
-    const WF_KEY_CUSTOMER = 'customer_id';
+    public const WF_KEY_CUSTOMER = 'customer_id';
 
-    const WF_KEY_ORDER = 'order_id';
+    public const WF_KEY_ORDER = 'order_id';
 
     public function __construct()
     {
@@ -76,7 +76,7 @@ class GoodsSaleWorkflow extends Workflow
                 self::EVENT_TARGET => "send_goods"],
             self::EVENT_CONTEXT_MODIFIER => [
                 self::EVENT_ON => true,
-                self::EVENT_TARGET => function(Event $evt) {
+                self::EVENT_TARGET => function(Event $evt): void {
                     $this->set_context(self::CTX_SOME_EVENT, $evt->get_data(self::CONTEXT_VALUE_NAME));
                 } ]
         ];
@@ -87,13 +87,13 @@ class GoodsSaleWorkflow extends Workflow
     }
 
 // This methods should be implemented by programmer BEGIN
-    public function select_goods()
+    public function select_goods(): void
     {
         // Do something....
         sleep(1);
     }
 
-    public function checkout()
+    public function checkout(): void
     {
         // Do checkout action
         sleep(1);
@@ -103,46 +103,46 @@ class GoodsSaleWorkflow extends Workflow
      * @return bool
      * @throws Exception
      */
-    public function if_selected_goods_on_stock()
+    public function if_selected_goods_on_stock(): bool
     {
         // Some logic that check the depot
         $rnd = random_int(0, 3);
         return ($rnd === 0);
     }
 
-    public function make_order()
+    public function make_order(): void
     {
         $this->stop_wait_for(self::EVENT_SUPPLIER_SENT_GOODS);
         // Make order and send it to some department
         sleep(1);
     }
 
-    public function send_request_to_supplier()
+    public function send_request_to_supplier(): void
     {
         // Send request to supplier
         error_log("This is request to supplier\n");
         $this->start_wait_for(self::EVENT_SUPPLIER_SENT_GOODS);
     }
 
-    public function report_no_goods()
+    public function report_no_goods(): void
     {
         error_log("NO GOODS!!! Change the supplier!\n");
     }
 
-    public function create_bill()
+    public function create_bill(): void
     {
         // Create bill and send it to customer
         error_log("Bill was sent to customer!\n");
     }
 
-    public function send_goods()
+    public function send_goods(): void
     {
         // Create bill and send it to customer
         error_log("CUSTOMER GOT GOODS\n");
         $this->set_context("order_successful", "order_ok");
     }
 
-    public function show_result()
+    public function show_result(): void
     {
         if ($this->get_context("order_successful")) {
             error_log("THIS IS SUCCESSFUL FLOW!\n");
@@ -152,7 +152,7 @@ class GoodsSaleWorkflow extends Workflow
 
     }
 
-    public function report_no_payment()
+    public function report_no_payment(): void
     {
         error_log("NO PAYMENT! Bad customer\n");
     }

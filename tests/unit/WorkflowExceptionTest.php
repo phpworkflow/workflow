@@ -23,7 +23,7 @@ class ExceptionWorkflow extends Workflow {
 
 class WorkflowExceptionTest extends  TestCase
 {
-    public function testWaitToday()
+    public function testWaitToday(): void
     {
         $workflow = new ExceptionWorkflow();
         self::assertEmpty($workflow->get_error_info());

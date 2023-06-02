@@ -7,11 +7,11 @@ use Exception;
 use Workflow\Workflow;
 
 class NodeWait extends Base {
-    const PRIORITY=1;
+    public const PRIORITY=1;
 
-    const NODE_PREFIX="wait_";
+    public const NODE_PREFIX="wait_";
 
-    const TIME_PATTERN='/(\d{1,2}):(\d{1,2})/';
+    public const TIME_PATTERN='/(\d{1,2}):(\d{1,2})/';
 
     /**
      * @var int
@@ -43,7 +43,7 @@ class NodeWait extends Base {
      *
      * @throws Exception
      */
-    public static function fix_node(Workflow $workflow, array &$node) {
+    public static function fix_node(Workflow $workflow, array &$node): void {
 
         $node[self::P_TIMEOUT] = isset($node[self::P_TIME])
             ? self::getTimeoutByTime($node[self::P_TIME])
@@ -87,7 +87,7 @@ class NodeWait extends Base {
      * @param $node_name
      * @return int
      */
-    private static function get_timeout_by_name($node_name) {
+    private static function get_timeout_by_name($node_name): int {
         // TODO implement this
         return 1;
     }
