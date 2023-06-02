@@ -26,7 +26,11 @@ class TPostgres extends Postgres {
         return self::TEST_CLEANUP_TIME;
     }
 
-    public function get_host_pid_from_lock_string($lock) {
+    /**
+     * @param $lock
+     * @return string[]
+     */
+    public function get_host_pid_from_lock_string($lock): array {
         return parent::get_host_pid_from_lock_string($lock);
     }
 }
@@ -217,7 +221,7 @@ select status from workflow where workflow_id = :workflow_id
         return $statement;
     }
 
-    private function createWorkflow(IStorage $storage) {
+    private function createWorkflow(IStorage $storage): int {
         $workflow = new RegularAction();
         return $workflow->put_to_storage($storage);
     }

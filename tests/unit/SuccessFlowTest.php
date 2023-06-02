@@ -11,7 +11,7 @@ class SuccessFlowTest extends TestCase {
 
     public const ORDER_ID = 592;
 
-    protected $workflow;
+    protected Workflow $workflow;
 
     public function setUp(): void {
         $this->workflow=new GoodsSaleWorkflow();
