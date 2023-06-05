@@ -284,7 +284,8 @@ abstract class Workflow
     private function handle_event(Event $event): ?Event
     {
         $event_type = $event->get_type();
-        $this->logger->debug("Event $event_type arrived.");
+        $event_id = $event->get_id();
+        $this->logger->debug("Event($event_id) $event_type arrived.");
 
         if (!isset($this->events_map[$event_type])) {
             $this->logger->debug(" !!! Event '$event_type' not presents in event map.");
