@@ -319,14 +319,13 @@ SQL;
                     from subscription
                         where event_type = :type    
                             and status = :status
-                            and ((context_key = :context_key and context_value = :context_value)
-                                or (context_key = :empty_value and context_value  = :empty_value))
+                            and (context_key = :context_key and context_value = :context_value)                                
                 limit 1000
         ";
 
         // empty key => value for case "where event_type = :type and context_key is null and context_value is null"
         // if $keyData is empty
-        $keyData = array_merge(['' => ''], $event->get_key_data());
+        $keyData = array_merge([Subscription::EMPTY => Subscription::EMPTY], $event->get_key_data());
 
         try {
             $countEvents = 0;
@@ -338,7 +337,6 @@ SQL;
                     'status' => IStorage::STATUS_ACTIVE,
                     'context_key' => $context_key,
                     'context_value' => $context_value,
-                    'empty_value' => Subscription::EMPTY
                 ]);
                 $countEvents += $statement->rowCount();
             }
