@@ -206,7 +206,9 @@ SQL;
 
         if($unique) {
             [$key, $value] = $workflow->get_uniqueness();
-            if($this->workflow_exists($workflow->get_type(), $key, $value)) {
+            $type = $workflow->get_type();
+            if($this->workflow_exists($type, $key, $value)) {
+                $this->logger->warn("NOT UNIQUE: $type, $key, $value");
                 return false;
             }
         }
