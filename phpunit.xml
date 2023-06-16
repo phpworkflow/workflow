@@ -5,7 +5,7 @@
         </testsuite>
     </testsuites>
     <php>
-        <env name="WORKFLOW_DB_DSN" value="pgsql:user=dbuser;password=PasswOrd;host=localhost;port=5432;dbname=vietnam_back" force="true" />
+        <env name="WORKFLOW_DB_DSN" value="pgsql:user=dbuser;password=PasswOrd;host=localhost;port=5432;dbname=workflow" force="true" />
         <env name="DEBUG_WF_SQL" value="true" force="true" />
     </php>
 </phpunit>

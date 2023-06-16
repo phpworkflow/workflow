@@ -24,8 +24,6 @@ class Postgres implements IStorage
 
     public const ENV_DEBUG_WF_SQL = 'DEBUG_WF_SQL';
 
-    public const UNIQUENESS = 'UNIQUENESS';
-
     public const TASK_LIST_SIZE_LIMIT = 100;
 
     public const HOST_DELETE_DELAY = 300;
@@ -165,37 +163,6 @@ class Postgres implements IStorage
     }
 
     /**
-     * Checks if workflow with unique properties exists
-     * @param $type
-     * @param $key
-     * @param $value
-     * @return bool
-     * @throws RuntimeException
-     */
-    private function workflow_exists($type, $key, $value): bool {
-
-        $sql = <<<SQL
-select 1 from workflow where workflow_id in (
-select subscription.workflow_id from subscription
-where status =:status
-  and event_type = :uniqueness
-  and context_key = :key
-  and context_value = :value ) and type = :type;
-SQL;
-
-        $result = $this->doSql($sql,
-            [
-                'status' => IStorage::STATUS_ACTIVE,
-                'uniqueness' => self::UNIQUENESS,
-                'key' => $key,
-                'value' => $value,
-                'type' => $type
-            ]);
-
-        return $result->rowCount() > 0;
-    }
-
-    /**
      * @param Workflow $workflow
      * @param false $unique
      * @return bool
@@ -203,18 +170,9 @@ SQL;
      */
     public function create_workflow(Workflow $workflow, $unique = false): bool
     {
-
-        if($unique) {
-            [$key, $value] = $workflow->get_uniqueness();
-            $type = $workflow->get_type();
-            if($this->workflow_exists($type, $key, $value)) {
-                $this->logger->warn("NOT UNIQUE: $type, $key, $value");
-                return false;
-            }
-        }
-
         try {
             $this->db->beginTransaction();
+
             $sql = 'INSERT INTO workflow (type, context, scheduled_at, finished_at, status)
                 VALUES (:type, :context, to_timestamp(:scheduled_at_ts), null, :status)';
 
@@ -228,19 +186,11 @@ SQL;
             $workflow_id = $this->db->lastInsertId('workflow_workflow_id_seq');
             $workflow->set_id($workflow_id);
 
-            $this->createSubscription($workflow);
-
-            if($unique) {
-                $this->doSql('insert into subscription (workflow_id, status, event_type, context_key, context_value) 
-                    values (:workflow_id, :status, :event_type, :context_key, :context_value)',
-                    [
-                        'workflow_id' => $workflow_id,
-                        'status' => IStorage::STATUS_ACTIVE,
-                        'event_type' => self::UNIQUENESS,
-                        'context_key' => $key,
-                        'context_value' => $value
-                    ]);
+            if ($unique) {
+                $this->createUniqueness($workflow);
             }
+
+            $this->createSubscription($workflow);
 
             $this->db->commit();
         } catch (Exception $e) {
@@ -768,6 +718,48 @@ SQL;
             "trace" => $e->getTraceAsString()
         ];
         error_log(json_encode($error));
+    }
+
+    /**
+     * @param Workflow $workflow
+     * @throws RuntimeException
+     */
+    protected function createUniqueness(Workflow $workflow): void
+    {
+        $workflow_id = $workflow->get_id();
+        [$key, $value] = $workflow->get_uniqueness();
+        $workflowType = $workflow->get_type();
+        // event_type - length 64 char
+        $workflowType = md5($workflowType) . '_' . substr($workflowType, -30);
+
+        $sql = <<<SQL
+insert into subscription (workflow_id, status, event_type, context_key, context_value)
+    select coalesce(s.workflow_id, :workflow_id),
+           df.status,
+           coalesce(s.event_type, df.event_type),
+           coalesce(s.context_key, df.context_key),
+           coalesce(s.context_value, df.context_value)
+        from (select :event_type event_type,
+                     :context_key context_key,
+                     :context_value context_value,
+                     :status_active status
+                     ) df
+            left join subscription s on
+                df.status = s.status 
+                and df.event_type = s.event_type
+                and df.context_key = s.context_key
+                and df.context_value = s.context_value;
+SQL;
+
+        $this->doSql($sql,
+            [
+                'workflow_id' => $workflow_id,
+                'status_active' => IStorage::STATUS_ACTIVE,
+                'event_type' => $workflowType,
+                'context_key' => $key,
+                'context_value' => $value
+            ]);
+
     }
 
 }
