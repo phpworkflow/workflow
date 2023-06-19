@@ -221,11 +221,12 @@ class Postgres implements IStorage
             $this->db->beginTransaction();
 
             $sql = 'update event set finished_at = current_timestamp, status = :status 
-                where workflow_id = :workflow_id';
+                where workflow_id = :workflow_id and status = :status_active';
 
             $this->doSql($sql, [
                 'workflow_id' => $workflow_id,
-                'status' => IStorage::STATUS_PROCESSED
+                'status' => IStorage::STATUS_PROCESSED,
+                'status_active' => IStorage::STATUS_ACTIVE
             ]);
 
             $sql = 'update subscription set status = :status 
@@ -565,12 +566,15 @@ SQL;
      */
     public function close_event(Event $event): bool
     {
-        $sql = 'UPDATE event set status = :status, finished_at = current_timestamp
+        $sql = 'UPDATE event set status = :status, 
+                 finished_at = current_timestamp, 
+                 started_at = coalesce(:started_at, created_at)
               WHERE event_id = :event_id';
 
         return (bool)($this->doSql($sql, [
             'event_id' => $event->get_id(),
-            'status' => self::STATUS_PROCESSED
+            'status' => self::STATUS_PROCESSED,
+            'started_at' => $event->getStartedAt()
         ]));
     }
 
@@ -670,9 +674,10 @@ SQL;
      */
     public function get_events(int $workflow_id): array
     {
-        $sql = "select event_id, type, context from event where 
+        $sql = "select event_id, type, context, current_timestamp ts from event where 
                 status = :status 
                 and workflow_id = :workflow_id 
+                    order by created_at
                     limit 100;
                 ";
 
@@ -686,6 +691,7 @@ SQL;
             $e = new Event($row['type'], $row['context']);
             $e->setEventId($row['event_id']);
             $e->setWorkflowId($workflow_id);
+            $e->setStartedAt($row['ts']);
             $events[] = $e;
         }
 

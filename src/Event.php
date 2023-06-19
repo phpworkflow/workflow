@@ -10,11 +10,13 @@ class Event {
     /* @var int $workflow_id */
     protected int $workflow_id=0;
     protected int $event_id=0;
+
     protected string $type;
     protected string $status;
     /* @var Context $context */
     protected Context $context;
 
+    protected ?string $started_at = null;
     /**
      * @param string $type
      * @param $context
@@ -127,6 +129,22 @@ class Event {
     public function setEventId(int $event_id): void
     {
         $this->event_id = $event_id;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getStartedAt(): ?string
+    {
+        return $this->started_at;
+    }
+
+    /**
+     * @param string|null $started_at
+     */
+    public function setStartedAt(?string $started_at): void
+    {
+        $this->started_at = $started_at;
     }
 
 }

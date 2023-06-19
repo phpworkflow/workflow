@@ -52,7 +52,7 @@ class Simple extends AbstractEngine {
 
             if(!$workflow->is_finished()) {
                 // Function is executed after successful event processing
-                $workflow->set_sync_callback(function(Workflow $workflow, Event $event = null): void {
+                $workflow->set_sync_callback(static function(Workflow $workflow, Event $event = null): void {
                     if($event !== null) {
                         $this->storage->close_event($event);
                     }
