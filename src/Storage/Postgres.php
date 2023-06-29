@@ -9,6 +9,7 @@ use Exception;
 use LogicException;
 use RuntimeException;
 use JsonException;
+use Throwable;
 
 use Workflow\Factory;
 use Workflow\Logger\Logger;
@@ -186,14 +187,15 @@ class Postgres implements IStorage
             $workflow_id = $this->db->lastInsertId('workflow_workflow_id_seq');
             $workflow->set_id($workflow_id);
 
-            if ($unique) {
-                $this->createUniqueness($workflow);
+            if ($unique && !$this->createUniqueness($workflow)) {
+                $this->db->rollBack();
+                return false;
             }
 
             $this->createSubscription($workflow);
 
             $this->db->commit();
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $this->logToStderr($e);
             $this->db->rollBack();
             $this->logger->error($e->getMessage());
@@ -730,7 +732,7 @@ SQL;
      * @param Workflow $workflow
      * @throws RuntimeException
      */
-    protected function createUniqueness(Workflow $workflow): void
+    protected function createUniqueness(Workflow $workflow): bool
     {
         $workflow_id = $workflow->get_id();
         [$key, $value] = $workflow->get_uniqueness();
@@ -757,15 +759,20 @@ insert into subscription (workflow_id, status, event_type, context_key, context_
                 and df.context_value = s.context_value;
 SQL;
 
-        $this->doSql($sql,
-            [
-                'workflow_id' => $workflow_id,
-                'status_active' => IStorage::STATUS_ACTIVE,
-                'event_type' => $workflowType,
-                'context_key' => $key,
-                'context_value' => $value
-            ]);
-
+        try {
+            $this->doSql($sql,
+                [
+                    'workflow_id' => $workflow_id,
+                    'status_active' => IStorage::STATUS_ACTIVE,
+                    'event_type' => $workflowType,
+                    'context_key' => $key,
+                    'context_value' => $value
+                ]);
+            return true;
+        }
+        catch (Throwable $e) {
+            return false;
+        }
     }
 
 }
