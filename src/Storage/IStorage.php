@@ -3,6 +3,7 @@
 namespace Workflow\Storage;
 
 use Workflow\Logger\ILogger;
+use Workflow\Logger\Message;
 use Workflow\Workflow;
 use Workflow\Event;
 
@@ -99,4 +100,10 @@ interface IStorage
      * @return void
      */
     public function store_log(string $log_message, int $workflow_id = 0): void;
+
+    /**
+     * @param Message[] $messages
+     * @return void
+     */
+    public function store_log_array(array $messages): void;
 }

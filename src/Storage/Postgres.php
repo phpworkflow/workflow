@@ -715,6 +715,32 @@ SQL;
         ]);
     }
 
+
+    public function store_log_array(array $messages): void
+    {
+        if (empty($messages)) {
+            return;
+        }
+
+        $sql = "INSERT INTO log (workflow_id, created_at, log_text, pid, host) VALUES ";
+
+        $params = [];
+
+        foreach ($messages as $index => $message) {
+            $sql .= "(:workflow_id{$index}, :created_at{$index}, :log_text{$index}, :pid{$index}, :host{$index}), ";
+            $params["workflow_id{$index}"] = $message->workflow_id;
+            $params["created_at{$index}"] = $message->created_at;
+            $params["log_text{$index}"] = $message->log_text;
+            $params["pid{$index}"] = $message->pid;
+            $params["host{$index}"] = $message->host;
+        }
+
+        $sql = rtrim($sql, ", "); // Remove the trailing comma and space
+
+        $this->doSql($sql, $params);
+    }
+
+
     /**
      * @param Exception $e
      */

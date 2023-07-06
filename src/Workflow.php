@@ -68,6 +68,7 @@ abstract class Workflow
 
     protected array $unique_properties;
 
+    protected bool $is_batch_logs = false;
     /**
      * Basic initialization. parent::__construct should be executed in subclasses constructor
      *
@@ -99,6 +100,7 @@ abstract class Workflow
         $this->events_map = $events_map;
         $this->unique_properties = $unique_properties;
         $this->logger = WorkflowLogger::create($this->workflow_id);
+        $this->logger->set_batch_logs($this->is_batch_logs);
     }
 
     static private function prepare_nodes_map($class): void
@@ -445,6 +447,10 @@ abstract class Workflow
             $this->set_exec_time(time() + $this->get_pause_after_exception());
 
             return false;
+        } finally {
+            if($this->is_batch_logs) {
+                $this->logger->flush_logs();
+            }
         }
     }
 

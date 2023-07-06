@@ -200,14 +200,30 @@ class Logger implements ILogger
 
     /**
      * @param string $message
-     * @param int $workflowId
+     * @param int $workflow_id
      */
-    protected function store_log(string $message, int $workflowId = 0) {
+    protected function store_log(string $message, int $workflow_id = 0) {
         if(self::$storage) {
-            self::$storage->store_log($message, $workflowId);
+            self::$storage->store_log($message, $workflow_id);
             return;
         }
-        error_log("$workflowId: $message");
+        error_log("$workflow_id: $message");
+    }
+
+    /**
+     * @param Message $messages
+     * @return void
+     */
+    public function store_log_array(array $messages)
+    {
+        if(self::$storage) {
+            self::$storage->store_log_array($messages);
+            return;
+        }
+
+        foreach ($messages as $message) {
+            $this->write_log($message);
+        }
     }
 
     /**
