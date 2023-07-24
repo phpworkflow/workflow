@@ -625,7 +625,7 @@ SQL;
 
         $active_hosts = $this->get_active_hosts();
 
-        $sql = 'select workflow_id, "lock" from workflow where
+        $sql = 'select workflow_id, "lock", context, started_at from workflow where
                     status = :status
                     and "lock" <> \'\'
                     and EXTRACT(epoch FROM (current_timestamp - started_at)) > :time_limit
@@ -643,7 +643,7 @@ SQL;
         }
 
         while ($row = $result->fetch(PDO::FETCH_NUM)) {
-            [$workflow_id, $lock] = $row;
+            [$workflow_id, $lock, $context, $started_at] = $row;
             [$host, $pid] = $this->get_host_pid_from_lock_string($lock);
             if (self::process_exists($host, $pid, $active_hosts)) {
                 $this->logger->warn("CLEANUP: Workflow $workflow_id - is running for long time");
@@ -657,11 +657,27 @@ SQL;
             ]);
 
             if ($updRes->rowCount() > 0) {
+                $this->logRestoredWorkflow($workflow_id, $context, $started_at);
                 $this->logger->info("CLEANUP: Workflow $workflow_id restarted");
             } else {
                 $this->logger->warn("CLEANUP: Workflow $workflow_id restart failed");
             }
         }
+    }
+
+    protected function logRestoredWorkflow(int $workflow_id, string $context, string $started_at): bool
+    {
+        $sql = <<<SQL
+insert into restored_workflow (workflow_id, context, started_at) VALUES (:workflow_id, :context, :started_at)
+SQL;
+
+        $insertRes = $this->doSql($sql, [
+            'workflow_id' => $workflow_id,
+            'context' => $context,
+            'started_at' => $started_at
+        ]);
+
+        return $insertRes->rowCount() > 0;
     }
 
     protected function get_execution_time_limit(): int
