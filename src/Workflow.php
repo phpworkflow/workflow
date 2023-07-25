@@ -129,7 +129,10 @@ abstract class Workflow
      */
     public function get_uniqueness(): array {
         if(empty($this->unique_properties)) {
-            throw new LogicException('Please specify $unique_properties parameter for workflow');
+            return [
+                json_encode([static::class]),
+                json_encode([1])
+            ];
         }
 
         $keys = [];

@@ -10,6 +10,8 @@ use Workflow\Event;
 use Workflow\Example\GoodsSaleFlow2;
 use Workflow\Example\GoodsSaleWorkflow;
 use Workflow\Example\RegularAction;
+use Workflow\Logger\ILogger;
+use Workflow\Logger\Logger;
 use Workflow\Workflow;
 
 class TPostgres extends Postgres {
@@ -34,6 +36,16 @@ class TPostgres extends Postgres {
         return parent::get_host_pid_from_lock_string($lock);
     }
 }
+
+class BatchLogsRegularAction extends RegularAction {
+
+    public function __construct()
+    {
+        $this->is_batch_logs = true;
+        parent::__construct();
+    }
+}
+
 
 class PostgresTest extends TestCase
 {
@@ -100,6 +112,18 @@ class PostgresTest extends TestCase
 
         $this->storage->finish_workflow($workflow2->get_id());
     }
+
+    public function testCreateUniqueWorkflowNoContext(): void{
+        $this->doSql("delete from subscription where context_key like '%RegularAction%'", []);
+
+        $wf = new RegularAction();
+        $result = $this->storage->create_workflow($wf, true);
+        self::assertTrue($result);
+
+        $result = $this->storage->create_workflow($wf, true);
+        self::assertFalse($result);
+    }
+
 
     public function testCreateUniqueWorkflowDifferentTypesSameKey(): void {
         $workflow1=new GoodsSaleWorkflow();
@@ -211,6 +235,16 @@ select status from workflow where workflow_id = :workflow_id
         $statuses = array_map(fn($row) => $row['status'], $rows);
 
         self::assertFalse(in_array(IStorage::STATUS_ACTIVE, $statuses));
+    }
+
+    public function testBatchLogs() {
+        $storage = Postgres::instance("pgsql:user=dbuser;password=PasswOrd;host=localhost;port=5432;dbname=vietnam_unibus");
+        Logger::instance($storage);
+
+        $wf = new BatchLogsRegularAction();
+        $wf->set_log_channel(ILogger::LOG_DATABASE);
+        $wf->run();
+        self::assertNotEmpty($wf);
     }
 
     private function doSql(string $sql, array $params)

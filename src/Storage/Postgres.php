@@ -222,7 +222,9 @@ class Postgres implements IStorage
 
             $this->db->beginTransaction();
 
-            $sql = 'update event set finished_at = current_timestamp, status = :status 
+            $sql = 'update event set finished_at = current_timestamp, 
+                 status = :status,
+                 started_at = current_timestamp
                 where workflow_id = :workflow_id and status = :status_active';
 
             $this->doSql($sql, [
@@ -477,7 +479,7 @@ SQL;
      * @return false|Statement
      * @throws RuntimeException
      */
-    private function doSql(string $sql, array $params)
+    private function doSql(string $sql, array $params, $throwOnError = true)
     {
         $statement = $this->db->prepare($sql);
         $result = $statement->execute($params);
@@ -490,7 +492,7 @@ SQL;
             }
         }
 
-        if (!$result) {
+        if (!$result && $throwOnError) {
             $error = $statement->errorCode().' '.json_encode($statement->errorInfo());
             throw new RuntimeException("Error: $error\n $sql params:\n" . var_export($params, true));
         }
@@ -536,7 +538,9 @@ SQL;
             if ($status === IStorage::STATUS_FINISHED) {
 
                 $this->doSql(
-                    "update event set finished_at = current_timestamp, status = :status 
+                    "update event set finished_at = current_timestamp,
+                            started_at = current_timestamp,
+                            status = :status 
                                 where workflow_id = :workflow_id",
                     [
                         'workflow_id' => $workflow_id,
@@ -675,7 +679,7 @@ SQL;
             'workflow_id' => $workflow_id,
             'context' => $context,
             'started_at' => $started_at
-        ]);
+        ], false);
 
         return $insertRes->rowCount() > 0;
     }
