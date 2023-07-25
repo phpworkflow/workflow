@@ -64,3 +64,12 @@ CREATE INDEX log_ind ON log (workflow_id , created_at );
 CREATE INDEX workflow_queue_ind ON workflow (scheduled_at, status );
 CREATE INDEX event_queue_ind ON event (created_at, status );
 CREATE INDEX subscr_wf_ind ON subscription (workflow_id, status);
+
+CREATE TABLE restored_workflow
+(
+    id bigserial NOT NULL PRIMARY KEY,
+    workflow_id BIGINT    NOT NULL,
+    context     TEXT,
+    started_at  timestamp NOT NULL,
+    created_at  timestamp default current_timestamp
+);

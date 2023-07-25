@@ -439,7 +439,7 @@ abstract class Workflow
 
             $this->on_finish();
             return true;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->warn("run Exception: " . $e->getMessage());
             $this->logger->warn($e->getTraceAsString());
             $this->error_info = "Exception: " . $e->getMessage();
