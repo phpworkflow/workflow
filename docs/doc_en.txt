@@ -1,0 +1,155 @@
+Library for creating virtual processes (workflows).
+
+This library is intended for implementing complex asynchronous business logic and unifying the execution of this logic.
+
+General Information.
+The library contains several main classes that implement user business logic.
+
+The Workflow class is the main abstract class of the library, inheriting from which allows creating a description of
+your own process. The parameters of the process are set in the constructor of the child class.
+
+The Event class is an abstract class for implementing events with which the Workflow interacts with the
+external environment.
+
+The Postgres class contains the logic for working with the database.
+
+The Logger class contains logging functionality.
+
+Quick Start
+
+1) To start working with the library, you need to create a class that will inherit from the Workflow class.
+The parameters of the process must be set in the class constructor. Example:
+
+class ExampleWorkflow extends Workflow {
+    public function __construct() {
+        $process_nodes = [
+            ["action1"],
+            ["wait_1s", "timeout" => 1],
+            ["goto_action1", "counter" => 10],
+            ["end"]
+        ];
+        parent::__construct($process_nodes);
+    }
+
+    public function action1(): void {
+        $cnt = $this->get_context('cnt') ?: 0;
+        $cnt++;
+        $this->logger->info("Count: $cnt");
+        $this->set_context('cnt',$cnt);
+    }
+}
+
+It is mandatory to describe the process algorithm in the class constructor. To do this, you need to create an
+array $process_nodes, where the elements of the array are commands that will be executed
+sequentially when the run() method is started.
+
+2) Create a test to check the operation of the process. Example:
+
+function test_success(): void {
+    $wf=new ExampleWorkflow();
+    $wf->run();
+    self::assertEquals('goto_action1', $wf->get_current_node_name());
+}
+
+3) Run the test.
+
+When creating a library class object, the library checks the correctness of the description and, in case of an error,
+throws an exception with a description of the error. When calling the run() method, the library performs the described
+process algorithm. If there is a "wait" command, the run command ends, and the object retains the current state
+of the process.
+
+Working with the database
+The DB is not necessary during development, but in a working environment, it is needed to save the state of the
+process and is used by the mechanism that ensures its execution. The processing logic is contained
+in the phpworkflow/processor package.
+
+Process Description Commands
+This section describes the commands used in the process description. Commands allow abbreviated syntax. In the process
+of analyzing the algorithm, the library complements the process description with parameters that were not specified
+but can be obtained from its name.
+
+1) The logic execution command. Example:
+
+["action1"]
+
+In this example, the action1() method of the ExampleWorkflow class is called.
+In case no significant prefix like "goto_" or "wait_" is set, a method with a name specified in the command is called.
+The library validates the presence of the specified method in the class and generates an exception in its absence.
+Another important feature is that these methods should not contain sleep type waiting commands.
+The implementation of the wait will be described below.
+
+2) Unconditional jump command. Example:
+
+["goto_action1"]
+
+In this example, the execution flow switches to the "action1" command.
+Using this command, you can implement an unconditional jump to another command, thereby changing the sequence of command
+execution. An additional parameter of the command is "counter", where you can specify the number of jumps. Example:
+
+["goto_action1", "counter" => 10]
+["action2"]
+
+In this example, the execution flow switches to the "action1" command 10 times. On the 11th call, the jump will not
+happen and the execution flow will move to the next command action2.
+
+There is an option to specify additional behavior at the end of the jump cycle. If the "one_time" parameter is
+specified, all subsequent calls to the command will be ignored. Example:
+
+["goto_action1", "counter" => 10, "one_time"]
+
+By default, if the "one_time" parameter is not specified, then after the end of the jump cycle, the jump counter resets
+and the possibility of jumping is restored.
+Thus, this command allows you to implement FOR cycles with a specified number of iterations.
+
+3) Wait command. Example:
+
+["wait_10s", "timeout" => 10]
+
+In this example, the command execution flow is paused for 10 seconds.
+
+The wait command works as follows. The Workflow object contains an internal variable that determines the time of
+launching the next command. The value of this variable is compared to the current time. If the current time is greater
+ or equal to the value of the variable, the command is executed according to the algorithm. But if the current time is
+ less than the value of the internal variable, the command execution is suspended until the current time "catches up"
+ with the time recorded in the internal variable of the process.
+
+At the same time, you can execute the run() method of the Workflow object any number of times, it will not affect the
+process of execution and commands.
+
+It is important to understand this approach when writing a test. In the test, it is possible to skip waiting periods,
+thus testing a long asynchronous process in a matter of seconds. Example:
+
+$workflow->run(); // Execution reached the wait command, the process stopped
+$workflow->set_exec_time(0); // We reset the workflow time
+$workflow->run(); // Execution of the commands following the wait command started
+
+If you remove the call to the set_exec_time() method, then any number of run() commands will not change the state of
+the workflow.
+
+The command allows you to specify a specific time to execute a command, not a wait period. Example:
+
+["wait_0730", "time" => "07:30"]
+
+The internal timer of the workflow will be moved to a time in the future that corresponds to 07:30 local time.
+
+4) Conditional transition. Example:
+
+["if_selected_goods_on_stock",
+    "then" => [
+        ["make_order"],
+    ],
+    "else" => [
+        ["send_request_to_supplier"],
+        ["wait_for_goods", "timeout" => 24 * 3600],
+    ]
+],
+
+In this example, "if_selected_goods_on_stock" is the name of the workflow class method to be executed. The method should
+return a value that can be cast to a boolean. If the value is true, the sequence of "then" commands is executed, if the
+value is false, the sequence of commands in the "else" block is executed.
+Each of the blocks can contain one or several commands. The "else" attribute is optional.
+
+Command to end the workflow execution. Example:
+["end"]
+This command ends the execution of the workflow. This command is not mandatory, if there are no commands,
+the workflow also ends its work.
