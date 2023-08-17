@@ -33,6 +33,12 @@ class TPostgres extends Postgres {
      * @return string[]
      */
     public function get_host_pid_from_lock_string($lock): array {
+        [$host, $pid] = parent::get_host_pid_from_lock_string($lock);
+        $pid = $pid . '0'; // Change pid to process cleanup
+        return [$host, $pid];
+    }
+
+    public function parent__get_host_pid_from_lock_string($lock): array {
         return parent::get_host_pid_from_lock_string($lock);
     }
 }
@@ -41,8 +47,8 @@ class BatchLogsRegularAction extends RegularAction {
 
     public function __construct()
     {
-        $this->is_batch_logs = true;
         parent::__construct();
+        $this->logger->set_batch_logs(true);
     }
 }
 
@@ -63,7 +69,6 @@ class PostgresTest extends TestCase
     }
 
     public function testCleanup(): void {
-
         $storage = $this->storage; //new TPostgres($this->connection);
 
         self::assertNotEmpty($storage);
@@ -88,8 +93,10 @@ class PostgresTest extends TestCase
         $storage->cleanup();
 
         $workflow2=$storage->get_workflow($workflowId);
-        // Can't process cleanup due to same pid
-        self::assertEmpty($workflow2);
+
+        self::assertNotEmpty($workflow2);
+
+        $storage->save_workflow($workflow2);
 
     }
 
@@ -188,13 +195,23 @@ class PostgresTest extends TestCase
 
         $events = $storage->get_events($workflowId);
         self::assertEmpty($events);
+
+        $sql = "
+select status from workflow where workflow_id = :workflow_id;
+";
+        $stm = $this->doSql($sql, ['workflow_id' => $workflowId]);
+        $rows = $stm->fetchAll();
+        $statuses = array_map(fn($row) => $row['status'], $rows);
+
+        self::assertFalse(in_array(IStorage::STATUS_IN_PROGRESS, $statuses));
+
     }
 
     public function testGetPidFromLock(): void {
-        $storage = $this->storage; //new TPostgres($this->connection);
+        $storage = $this->storage;
         $lock = 'a51fad2e4cef+37+733511867';
 
-        [$host, $pid] = $storage->get_host_pid_from_lock_string($lock);
+        [$host, $pid] = $storage->parent__get_host_pid_from_lock_string($lock);
         self::assertEquals(37, $pid);
         self::assertEquals('a51fad2e4cef', $host);
     }
@@ -205,7 +222,6 @@ class PostgresTest extends TestCase
      */
     public function testFinishWorkflow(): void {
         $active_ids = $this->storage->get_active_workflow_ids();
-        $workflow_id = array_shift($active_ids);
 
         if(empty($active_ids)) {
             $workflow1=new GoodsSaleWorkflow();
@@ -213,6 +229,9 @@ class PostgresTest extends TestCase
             $result = $this->storage->create_workflow($workflow1, true);
             self::assertTrue($result, 'Workflow not created');
             $workflow_id = $workflow1->get_id();
+        }
+        else {
+            $workflow_id = array_shift($active_ids);
         }
 
         $workflow = $this->storage->get_workflow($workflow_id);
@@ -235,16 +254,25 @@ select status from workflow where workflow_id = :workflow_id
         $statuses = array_map(fn($row) => $row['status'], $rows);
 
         self::assertFalse(in_array(IStorage::STATUS_ACTIVE, $statuses));
+        self::assertFalse(in_array(IStorage::STATUS_IN_PROGRESS, $statuses));
     }
 
     public function testBatchLogs() {
-        $storage = Postgres::instance("pgsql:user=dbuser;password=PasswOrd;host=localhost;port=5432;dbname=vietnam_unibus");
+        $storage = Postgres::instance($_ENV['WORKFLOW_DB_DSN']);
         Logger::instance($storage);
+
+        $workflow_id = -11;
+        $this->doSql('delete from log where workflow_id = :workflow_id', ['workflow_id' => $workflow_id]);
 
         $wf = new BatchLogsRegularAction();
         $wf->set_log_channel(ILogger::LOG_DATABASE);
+
+        $wf->set_id($workflow_id);
         $wf->run();
         self::assertNotEmpty($wf);
+        $stm = $this->doSql('select count(1) cnt from log where workflow_id = :workflow_id', ['workflow_id' => $workflow_id]);
+        $rows = $stm->fetchAll();
+        self::assertGreaterThan(0, $rows[0]['cnt'] ?? 0);
     }
 
     private function doSql(string $sql, array $params)

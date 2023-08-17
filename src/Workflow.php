@@ -100,7 +100,6 @@ abstract class Workflow
         $this->events_map = $events_map;
         $this->unique_properties = $unique_properties;
         $this->logger = WorkflowLogger::create($this->workflow_id);
-        $this->logger->set_batch_logs($this->is_batch_logs);
     }
 
     static private function prepare_nodes_map($class): void
@@ -451,9 +450,7 @@ abstract class Workflow
 
             return false;
         } finally {
-            if($this->is_batch_logs) {
-                $this->logger->flush_logs();
-            }
+            $this->logger->flush_logs();
         }
     }
 

@@ -57,6 +57,9 @@ create table host
 
 comment on table host is 'List of hosts (containers) which process workflows';
 
+create index subscr_value_key_type_ind
+    on subscription (context_value, context_key, event_type);
+
 create unique index subscr_uni_ind
   on subscription (workflow_id, event_type, context_key, context_value, status );
 

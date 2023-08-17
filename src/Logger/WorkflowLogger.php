@@ -30,7 +30,7 @@ class WorkflowLogger extends Logger implements LoggerInterface
 
     protected function store_log(string $message, int $workflow_id = 0) {
         if($this->is_batch_logs) {
-            $this->buffer[] = new Message($message, $workflow_id);
+            $this->buffer[] = new Message($message, $workflow_id ?: $this->workflowId);
             return;
         }
         parent::store_log($message, $workflow_id ?: $this->workflowId);
@@ -38,10 +38,9 @@ class WorkflowLogger extends Logger implements LoggerInterface
 
     public function flush_logs(): void
     {
-        if(!$this->is_batch_logs) {
+        if(!$this->is_batch_logs || count($this->buffer) === 0) {
             return;
         }
-
         $this->store_log_array($this->buffer);
         $this->buffer = [];
     }
