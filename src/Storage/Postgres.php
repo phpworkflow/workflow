@@ -283,7 +283,12 @@ SQL;
             'ts' => $ts
         ]);
 
-        return $stm && $stm->rowCount() > 0;
+        $is_updated = $stm && $stm->rowCount() > 0;
+        $this->logger->warn("set_scheduled_at_for_top_priority: $type, $key, $value: ".
+            ($is_updated ? 'UPDATED' : 'NOT UPDATED')
+        );
+
+        return $is_updated;
     }
 
     /**
