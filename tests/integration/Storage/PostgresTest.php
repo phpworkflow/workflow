@@ -275,6 +275,50 @@ select status from workflow where workflow_id = :workflow_id
         self::assertGreaterThan(0, $rows[0]['cnt'] ?? 0);
     }
 
+    public function testUpdatePriority() {
+        $workflow1=new GoodsSaleWorkflow();
+        $workflow1->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER, self::TEST_CUSTOMER_ID+10);
+        $result = $this->storage->create_workflow($workflow1, true);
+        self::assertTrue($result);
+
+        $workflow1->run();
+        self::assertTrue($this->storage->save_workflow($workflow1));
+        $wf_id = $workflow1->get_id();
+
+        $sql = <<<SQL
+select w.workflow_id, s.context_key, s.context_value from workflow w
+            left join subscription s on w.workflow_id = s.workflow_id
+                                 where 1=1
+                                    and scheduled_at > now() - interval '1 day'
+                                    and type = :type
+                                    and w.status = :status
+                                 limit 1;
+SQL;
+
+        $stm = $this->doSql($sql,
+            [
+                'type' => GoodsSaleWorkflow::class,
+                'status' => IStorage::STATUS_ACTIVE
+            ]);
+        $row = $stm->fetch();
+        self::assertNotEmpty($row);
+
+        $this->storage->set_scheduled_at_for_top_priority(
+            GoodsSaleWorkflow::class,
+            GoodsSaleWorkflow::WF_KEY_CUSTOMER,
+            self::TEST_CUSTOMER_ID+10
+        );
+
+        $stm = $this->doSql($sql,
+            [
+                'type' => GoodsSaleWorkflow::class,
+                'status' => IStorage::STATUS_ACTIVE
+            ]);
+        $row = $stm->fetch();
+        self::assertEmpty($row);
+
+    }
+
     private function doSql(string $sql, array $params)
     {
         $statement = $this->connection->prepare($sql);

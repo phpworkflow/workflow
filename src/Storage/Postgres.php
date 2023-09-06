@@ -264,6 +264,28 @@ class Postgres implements IStorage
         return true;
     }
 
+    public function set_scheduled_at_for_top_priority(string $type, string $key, string $value, int $ts = 0): bool {
+$sql = <<<SQL
+
+update workflow set scheduled_at = to_timestamp(:ts) where workflow_id in (
+    select workflow_id from subscription where
+                                             context_key = :key
+                                           and context_value = :value
+                                           and status = :status 
+    ) and type = :type;
+SQL;
+
+        $stm = $this->doSql($sql, [
+            'type' => $type,
+            'status' => IStorage::STATUS_ACTIVE,
+            'key' => $key,
+            'value' => $value,
+            'ts' => $ts
+        ]);
+
+        return $stm && $stm->rowCount() > 0;
+    }
+
     /**
      * @param Event $event
      * @return null|int
@@ -326,26 +348,22 @@ class Postgres implements IStorage
     {
         /** @noinspection SqlConstantCondition */
         $sql = <<<SQL
-select type, array_to_json(array_agg(workflow_id)) wf_list
-from (
-         select workflow_id,
-                type,
-                row_number() OVER (PARTITION BY type) AS rn
-         from (
-                  select distinct workflow_id,
-                                  type
-                  from (select wf.workflow_id, wf.type, random() rnd
-                        from workflow wf
-                                 left join
-                             event e on wf.workflow_id = e.workflow_id
-                        where ((e.status = :status and e.created_at <= current_timestamp)
-                            or
-                               (wf.status = :status and wf.scheduled_at <= current_timestamp))
-                        order by wf.scheduled_at, rnd) wf
-              ) aa
-     ) bb
-where rn < :limit
-group by type;
+select type, array_to_json(wf_list[1: :limit]) from (
+       select type, array_agg(workflow_id) wf_list
+       from (
+                select workflow_id,
+                       type
+                from (select distinct wf.workflow_id, wf.type, wf.scheduled_at
+                      from workflow wf
+                               left join
+                           event e on wf.workflow_id = e.workflow_id
+                      where ((e.status = :status and e.created_at <= current_timestamp)
+                          or
+                             (wf.status = :status and wf.scheduled_at <= current_timestamp))
+                     ) wf order by scheduled_at
+            ) aa
+       group by type
+   ) bb;
 SQL;
 
         $statement = $this->doSql($sql, [
