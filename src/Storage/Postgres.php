@@ -564,10 +564,12 @@ SQL;
                     "update event set finished_at = current_timestamp,
                             started_at = current_timestamp,
                             status = :status 
-                                where workflow_id = :workflow_id",
+                                where workflow_id = :workflow_id
+                                and status = :status_active",
                     [
                         'workflow_id' => $workflow_id,
-                        'status' => IStorage::STATUS_PROCESSED
+                        'status' => IStorage::STATUS_PROCESSED,
+                        'status_active' => IStorage::STATUS_ACTIVE
                     ]);
 
                 $this->doSql('update subscription set status = :status 
