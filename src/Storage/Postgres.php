@@ -222,7 +222,7 @@ class Postgres implements IStorage
 
             $this->db->beginTransaction();
 
-            $sql = 'update event set finished_at = current_timestamp, 
+            $sql = 'update event set finished_at = current_timestamp,
                  status = :status,
                  started_at = current_timestamp
                 where workflow_id = :workflow_id and status = :status_active';
@@ -233,7 +233,7 @@ class Postgres implements IStorage
                 'status_active' => IStorage::STATUS_ACTIVE
             ]);
 
-            $sql = 'update subscription set status = :status 
+            $sql = 'update subscription set status = :status
                 where workflow_id = :workflow_id';
 
             $this->doSql($sql, [
@@ -241,8 +241,8 @@ class Postgres implements IStorage
                 'status' => IStorage::STATUS_FINISHED
             ]);
 
-            $sql = 'update workflow set 
-                    finished_at = current_timestamp, 
+            $sql = 'update workflow set
+                    finished_at = current_timestamp,
                     status = :status,
                     "lock" = :lock
                 where workflow_id = :workflow_id';
@@ -271,7 +271,7 @@ update workflow set scheduled_at = to_timestamp(:ts) where workflow_id in (
     select workflow_id from subscription where
                                              context_key = :key
                                            and context_value = :value
-                                           and status = :status 
+                                           and status = :status
     ) and type = :type;
 SQL;
 
@@ -301,9 +301,9 @@ SQL;
         $sql = "insert into event (type, context, status, workflow_id)
                 select cast(:type as text), :context, :event_status, workflow_id
                     from subscription
-                        where event_type = :type    
+                        where event_type = :type
                             and status = :status
-                            and (context_key = :context_key and context_value = :context_value)                                
+                            and (context_key = :context_key and context_value = :context_value)
                 limit 1000
         ";
 
@@ -353,7 +353,7 @@ SQL;
     {
         /** @noinspection SqlConstantCondition */
         $sql = <<<SQL
-select type, array_to_json(wf_list[1: :limit]) from (
+select type, array_to_json(wf_list[1: :limit]) wf_list from (
        select type, array_agg(workflow_id) wf_list
        from (
                 select workflow_id,
@@ -396,7 +396,7 @@ SQL;
             from workflow wf left join
                 event e on wf.workflow_id = e.workflow_id
             where ((e.status = :status and e.created_at <= current_timestamp)
-                or (wf.status = :status and wf.scheduled_at <= current_timestamp))            
+                or (wf.status = :status and wf.scheduled_at <= current_timestamp))
             order by wf.scheduled_at, rnd ) wf
                 limit :limit';
 
@@ -431,7 +431,7 @@ SQL;
         ];
 
         if ($doLock) {
-            $sql = 'UPDATE workflow SET 
+            $sql = 'UPDATE workflow SET
                 "lock" = :lock_id,
                 status = :status,
                 started_at = current_timestamp,
@@ -534,7 +534,7 @@ SQL;
                 context = :context,
                 scheduled_at = to_timestamp(:scheduled_at_ts),
                 finished_at = current_timestamp,
-                "lock" = coalesce(:lock, "lock"),        
+                "lock" = coalesce(:lock, "lock"),
                 status = coalesce(:status, status),
                 error_count = error_count - coalesce(:error_count, 0)
                     where workflow_id = :workflow_id
@@ -563,7 +563,7 @@ SQL;
                 $this->doSql(
                     "update event set finished_at = current_timestamp,
                             started_at = current_timestamp,
-                            status = :status 
+                            status = :status
                                 where workflow_id = :workflow_id
                                 and status = :status_active",
                     [
@@ -572,7 +572,7 @@ SQL;
                         'status_active' => IStorage::STATUS_ACTIVE
                     ]);
 
-                $this->doSql('update subscription set status = :status 
+                $this->doSql('update subscription set status = :status
                     where workflow_id = :workflow_id', [
                         'workflow_id' => $workflow_id,
                         'status' => IStorage::STATUS_FINISHED
@@ -597,8 +597,8 @@ SQL;
      */
     public function close_event(Event $event): bool
     {
-        $sql = 'UPDATE event set status = :status, 
-                 finished_at = current_timestamp, 
+        $sql = 'UPDATE event set status = :status,
+                 finished_at = current_timestamp,
                  started_at = coalesce(:started_at, created_at)
               WHERE event_id = :event_id';
 
@@ -721,9 +721,9 @@ SQL;
      */
     public function get_events(int $workflow_id): array
     {
-        $sql = "select event_id, type, context, current_timestamp ts from event where 
-                status = :status 
-                and workflow_id = :workflow_id 
+        $sql = "select event_id, type, context, current_timestamp ts from event where
+                status = :status
+                and workflow_id = :workflow_id
                     order by created_at
                     limit 100;
                 ";
@@ -824,7 +824,7 @@ insert into subscription (workflow_id, status, event_type, context_key, context_
                      :status_active status
                      ) df
             left join subscription s on
-                df.status = s.status 
+                df.status = s.status
                 and df.event_type = s.event_type
                 and df.context_key = s.context_key
                 and df.context_value = s.context_value;
