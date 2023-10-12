@@ -167,7 +167,6 @@ class Postgres implements IStorage
      * @param Workflow $workflow
      * @param false $unique
      * @return bool
-     * @throws JsonException
      */
     public function create_workflow(Workflow $workflow, $unique = false): bool
     {
@@ -378,7 +377,13 @@ SQL;
 
         $result = [];
         while ($row = $statement->fetch()) {
-            $result[$row['type']] = json_decode($row['wf_list'], null, 512, JSON_THROW_ON_ERROR);
+            try {
+                $result[$row['type']] = json_decode($row['wf_list'], null, 512, JSON_THROW_ON_ERROR);
+            }
+            catch (Throwable $e) {
+                $this->logger->error('Row: '.var_export($row, true));
+                $this->logger->error($e->getMessage());
+            }
         }
 
         return $result;
