@@ -377,13 +377,7 @@ SQL;
 
         $result = [];
         while ($row = $statement->fetch()) {
-            try {
-                $result[$row['type']] = json_decode($row['wf_list'], null, 512, JSON_THROW_ON_ERROR);
-            }
-            catch (Throwable $e) {
-                $this->logger->error('Row: '.var_export($row, true));
-                $this->logger->error($e->getMessage());
-            }
+            $result[$row['type']] = json_decode($row['wf_list'], null, 512, JSON_THROW_ON_ERROR);
         }
 
         return $result;
