@@ -18,6 +18,10 @@ use Workflow\Subscription;
 use Workflow\Workflow;
 use Workflow\Event;
 use Workflow\SystemUtils;
+use Workflow\Storage\Redis\Queue as RedisQueue;
+use Workflow\Storage\Redis\Config as RedisConfig;
+use Workflow\Storage\Redis\Event as RedisEvent;
+
 
 class Postgres implements IStorage
 {
@@ -45,6 +49,8 @@ class Postgres implements IStorage
     private PDO $db;
 
     private bool $isDebug;
+
+    protected RedisQueue $eventsQueue;
 
     /**
      * @param string $dsn
@@ -108,6 +114,8 @@ class Postgres implements IStorage
         $this->logger = Logger::instance();
         $this->db = $connection;
         $this->isDebug = (getenv(self::ENV_DEBUG_WF_SQL) !== false);
+        $cfg = new RedisConfig();
+        $this->eventsQueue = new RedisQueue([$cfg->eventsQueue()], $cfg->queueLength());
     }
 
     /**
@@ -200,6 +208,8 @@ class Postgres implements IStorage
             $this->logger->error($e->getMessage());
             return false;
         }
+
+        $this->eventsQueue->push(new RedisEvent($workflow_id));
 
         return true;
     }
@@ -297,14 +307,16 @@ SQL;
     public function create_event(Event $event): ?int
     {
 
-        $sql = "insert into event (type, context, status, workflow_id)
-                select cast(:type as text), :context, :event_status, workflow_id
+        // cast(:type as text) type, :context, :event_status,
+        $sql = "select distinct workflow_id
                     from subscription
                         where event_type = :type
                             and status = :status
                             and (context_key = :context_key and context_value = :context_value)
                 limit 1000
         ";
+
+        $insertSql = 'insert into event (type, context, status, workflow_id) values (:type, :context, :status, :workflow_id)';
 
         // empty key => value for case "where event_type = :type and context_key is null and context_value is null"
         // if $keyData is empty
@@ -315,12 +327,26 @@ SQL;
             foreach ($keyData as $context_key => $context_value) {
                 $statement = $this->doSql($sql, [
                     'type' => $event->get_type(),
-                    'context' => $event->getContext(),
-                    'event_status' => IStorage::STATUS_ACTIVE,
                     'status' => IStorage::STATUS_ACTIVE,
                     'context_key' => $context_key,
                     'context_value' => $context_value,
                 ]);
+
+                $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($rows as $r) {
+                    $workflow_id = $r['workflow_id'];
+                    $stm = $this->doSql($insertSql, [
+                        'type' => $event->get_type(),
+                        'context' => $event->getContext(),
+                        'status' => IStorage::STATUS_ACTIVE,
+                        'workflow_id' => $workflow_id
+                    ]);
+
+                    if($stm->rowCount() > 0) {
+                        $this->eventsQueue->push(new RedisEvent($workflow_id));
+                    }
+                }
+
                 $countEvents += $statement->rowCount();
             }
 

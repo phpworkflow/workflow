@@ -7,5 +7,10 @@
     <php>
         <env name="WORKFLOW_DB_DSN" value="pgsql:user=dbuser;password=PasswOrd;host=localhost;port=5432;dbname=workflow" force="true" />
         <env name="DEBUG_WF_SQL" value="true" force="true" />
+        <env name="WF_REDIS_HOST" value="localhost" force="false" />
+        <env name="WF_REDIS_PORT" value="6379" force="false" />
+        <env name="WF_REDIS_PASSWORD" value="qussmeechai0iF5artyuhgfv" force="false" />
+        <env name="WF_REDIS_EVENTS_QUEUE" value="dev-wf-evt" force="false" />
+        <env name="WF_REDIS_EVENTS_QUEUE_LENGTH" value="1000" force="false" />
     </php>
 </phpunit>
