@@ -439,6 +439,39 @@ SQL;
     }
 
     /**
+     * @param int $interval
+     * @param int $limit
+     * @return array
+     */
+    public function get_scheduled_workflows(): array
+    {
+        $sql = <<<SQL
+select * from (
+select workflow_id, type, scheduled_at from workflow where workflow_id in (
+            select workflow_id from event where status = :event_status order by created_at limit 1000
+)
+union
+select workflow_id, type, scheduled_at from workflow
+    where status = :status and scheduled_at < current_timestamp + interval '5 minute' order by scheduled_at
+    limit 10000
+) a;
+SQL;
+
+        $statement = $this->doSql($sql, [
+            'event_status' => IStorage::STATUS_ACTIVE,
+            'status' => IStorage::STATUS_ACTIVE
+        ]);
+
+        $result = [];
+        while ($row = $statement->fetch()) {
+            $result[$row['workflow_id']] = $row['scheduled_at'];
+        }
+
+        return $result;
+    }
+
+
+    /**
      * @param int $id
      * @param bool $doLock
      *

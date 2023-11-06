@@ -275,6 +275,11 @@ select status from workflow where workflow_id = :workflow_id
         self::assertGreaterThan(0, $rows[0]['cnt'] ?? 0);
     }
 
+    public function testGetSchecduledWorkflows() {
+        $scheduledWorkflows = $this->storage->get_scheduled_workflows();
+        $this->assertNotEmpty($scheduledWorkflows);
+    }
+
     public function testUpdatePriority() {
         $workflow1=new GoodsSaleWorkflow();
         $workflow1->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER, self::TEST_CUSTOMER_ID+10);
