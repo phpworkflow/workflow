@@ -31,6 +31,8 @@ class Postgres implements IStorage
 
     public const TASK_LIST_SIZE_LIMIT = 100;
 
+    public const SCHEDULED_TASK_LIST_SIZE_LIMIT = 1000;
+
     public const HOST_DELETE_DELAY = 300;
 
     private static ?IStorage $_storage = null;
@@ -441,7 +443,7 @@ SQL;
     /**
      * @return RedisEvent[]
      */
-    public function get_scheduled_workflows(): array
+    public function get_scheduled_workflows(int $limit = self::SCHEDULED_TASK_LIST_SIZE_LIMIT): array
     {
         $sql = <<<SQL
 select * from (
@@ -451,13 +453,13 @@ select workflow_id, type, now() scheduled_at from workflow where workflow_id in 
 union
 select workflow_id, type, scheduled_at from workflow
     where status = :status and scheduled_at < current_timestamp + interval '5 minute' order by scheduled_at
-    limit 10000
-) a;
+) a order by scheduled_at limit :limit;
 SQL;
 
         $statement = $this->doSql($sql, [
             'event_status' => IStorage::STATUS_ACTIVE,
-            'status' => IStorage::STATUS_ACTIVE
+            'status' => IStorage::STATUS_ACTIVE,
+            'limit' => $limit
         ]);
 
         $result = [];
