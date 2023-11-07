@@ -439,9 +439,7 @@ SQL;
     }
 
     /**
-     * @param int $interval
-     * @param int $limit
-     * @return array
+     * @return RedisEvent[]
      */
     public function get_scheduled_workflows(): array
     {
@@ -464,7 +462,7 @@ SQL;
 
         $result = [];
         while ($row = $statement->fetch()) {
-            $result[$row['workflow_id']] = $row['scheduled_at'];
+            $result[$row['workflow_id']] = new RedisEvent($row['workflow_id'], $row['type'], $row['scheduled_at']);
         }
 
         return $result;
