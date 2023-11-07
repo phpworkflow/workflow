@@ -445,7 +445,7 @@ SQL;
     {
         $sql = <<<SQL
 select * from (
-select workflow_id, type, scheduled_at from workflow where workflow_id in (
+select workflow_id, type, now() scheduled_at from workflow where workflow_id in (
             select workflow_id from event where status = :event_status order by created_at limit 1000
 )
 union
