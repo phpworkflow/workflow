@@ -447,11 +447,11 @@ SQL;
     {
         $sql = <<<SQL
 select * from (
-select workflow_id, type, now() scheduled_at from workflow where workflow_id in (
+select workflow_id, type, extract(epoch from now()) scheduled_at from workflow where workflow_id in (
             select workflow_id from event where status = :event_status order by created_at limit 1000
 )
 union
-select workflow_id, type, scheduled_at from workflow
+select workflow_id, type, extract(epoch from scheduled_at) scheduled_at from workflow
     where status = :status and scheduled_at < current_timestamp + interval '5 minute' order by scheduled_at
 ) a order by scheduled_at limit :limit;
 SQL;
@@ -464,7 +464,7 @@ SQL;
 
         $result = [];
         while ($row = $statement->fetch()) {
-            $result[$row['workflow_id']] = new RedisEvent($row['workflow_id'], $row['type'], $row['scheduled_at']);
+            $result[$row['workflow_id']] = new RedisEvent($row['workflow_id'], $row['type'], (int)$row['scheduled_at']);
         }
 
         return $result;
