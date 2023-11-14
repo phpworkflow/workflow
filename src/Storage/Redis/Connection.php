@@ -4,6 +4,7 @@ namespace Workflow\Storage\Redis;
 
 use Redis;
 use RedisException;
+use RuntimeException;
 
 class Connection
 {
@@ -39,11 +40,7 @@ class Connection
                 throw new RedisException("PING failed");
             }
         } catch (RedisException $e) {
-            $this->connection->pconnect($this->cfg->host(), $this->cfg->port());
-            $pass = $this->cfg->pass();
-            if(!empty($pass)) {
-                $this->connection->auth($pass);
-            }
+            $this->reconnect();
         }
 
         return $this->connection;
@@ -52,5 +49,23 @@ class Connection
     public function isConnected(): bool
     {
         return !empty($this->connection()->ping());
+    }
+
+    /**
+     * @return void
+     * @throws RedisException
+     */
+    protected function reconnect(): void
+    {
+        try {
+            $this->connection->pconnect($this->cfg->host(), $this->cfg->port());
+            $pass = $this->cfg->pass();
+            if (!empty($pass)) {
+                $this->connection->auth($pass);
+            }
+        }
+        catch (RedisException $e) {
+            throw new RuntimeException("Redis connection failed. ".$e->getMessage());
+        }
     }
 }
