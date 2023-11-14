@@ -48,4 +48,9 @@ class Connection
 
         return $this->connection;
     }
+
+    public function isConnected(): bool
+    {
+        return !empty($this->connection()->ping());
+    }
 }

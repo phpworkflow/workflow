@@ -38,7 +38,10 @@ class Queue
         $this->configNotExists = empty((new Config())->host());
     }
 
-
+    public function isRedisConnected()
+    {
+        return !$this->configNotExists && $this->redis()->isConnected();
+    }
 
     protected function redis(): Redis
     {
