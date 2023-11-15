@@ -180,8 +180,9 @@ class Queue
                 $result[] = $evt;
                 $lastId = $id;
             }
-            $keyLastId = self::LAST_ID_KEY_PREFIX . $queue;
 
+            $this->queues[$queue] = $lastId;
+            $keyLastId = self::LAST_ID_KEY_PREFIX . $queue;
             $this->redis()->set($keyLastId, $lastId);
         }
 
