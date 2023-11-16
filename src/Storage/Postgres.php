@@ -202,8 +202,9 @@ class Postgres implements IStorage
             }
 
             $this->createSubscription($workflow);
-
             $this->db->commit();
+
+            $this->eventsQueue->push(new RedisEvent($workflow_id, $workflow->get_type(), $workflow->get_start_time()));
         } catch (Throwable $e) {
             $this->logToStderr($e);
             $this->db->rollBack();
@@ -211,7 +212,7 @@ class Postgres implements IStorage
             return false;
         }
 
-        $this->eventsQueue->push(new RedisEvent($workflow_id));
+
 
         return true;
     }
