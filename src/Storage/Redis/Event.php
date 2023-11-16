@@ -35,6 +35,7 @@ class Event
         $this->workflow_id = (int)$data['workflow_id'] ?? $this->workflow_id;
         $this->workflow_type = $data['workflow_type'] ?? $this->workflow_type;
         $this->scheduled_at = (int)$data['scheduled_at'] ?? $this->scheduled_at;
+        $this->created_at = $data['created_at'] ?? $this->created_at;
 
         return $this;
     }

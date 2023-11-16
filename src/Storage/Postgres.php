@@ -470,13 +470,13 @@ WHERE
 UNION
 -- Second part: Select workflows with unhandled events
 SELECT
-    w.workflow_id,
-    w.type,
+    workflow_id,
+    type,
     EXTRACT(EPOCH FROM NOW()) as scheduled_at
 FROM
-    workflow w
+    workflow
 WHERE
-    w.workflow_id IN (
+    workflow_id IN (
         SELECT
             workflow_id
         FROM
