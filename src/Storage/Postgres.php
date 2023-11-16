@@ -446,14 +446,47 @@ SQL;
     public function get_scheduled_workflows(int $limit = self::SCHEDULED_TASK_LIST_SIZE_LIMIT): array
     {
         $sql = <<<SQL
-select * from (
-select workflow_id, type, extract(epoch from now()) scheduled_at from workflow where workflow_id in (
-            select workflow_id from event where status = :event_status order by created_at limit 1000
+-- First part: Select 1000 records per each type with smallest scheduled_at
+WITH RankedWorkflows AS (
+    SELECT
+        workflow_id,
+        type,
+        scheduled_at,
+        ROW_NUMBER() OVER (PARTITION BY type ORDER BY scheduled_at) as rn
+    FROM
+        workflow
+    WHERE
+        status = :status
+        and scheduled_at < current_timestamp + interval '1 minute'
 )
-union
-select workflow_id, type, extract(epoch from scheduled_at) scheduled_at from workflow
-    where status = :status and scheduled_at < current_timestamp + interval '5 minute' order by scheduled_at
-) a order by scheduled_at limit :limit;
+SELECT
+    workflow_id,
+    type,
+    EXTRACT(EPOCH FROM scheduled_at) as scheduled_at
+FROM
+    RankedWorkflows
+WHERE
+    rn <= :limit
+UNION
+-- Second part: Select workflows with unhandled events
+SELECT
+    w.workflow_id,
+    w.type,
+    EXTRACT(EPOCH FROM NOW()) as scheduled_at
+FROM
+    workflow w
+WHERE
+    w.workflow_id IN (
+        SELECT
+            workflow_id
+        FROM
+            event
+        WHERE
+            status = :event_status
+        ORDER BY
+            created_at
+        LIMIT :limit
+    );
 SQL;
 
         $statement = $this->doSql($sql, [
