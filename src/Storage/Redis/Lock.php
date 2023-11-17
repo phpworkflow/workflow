@@ -5,7 +5,7 @@ use Redis;
 
 class Lock
 {
-    protected const DEFAULT_KEY_EXPIRE_TIME = 30;
+    public const DEFAULT_KEY_EXPIRE_TIME = 30;
 
     protected Connection $connection;
 
