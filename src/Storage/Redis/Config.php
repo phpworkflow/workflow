@@ -7,7 +7,7 @@ class Config
     public function host(): string
     {
         $env = getenv('WF_REDIS_HOST');
-        return $env ?: ($_ENV['WF_REDIS_HOST'] ?? 'localhost');
+        return $env ?: ($_ENV['WF_REDIS_HOST'] ?? '');
     }
 
     public function port(): string
