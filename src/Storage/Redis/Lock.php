@@ -15,15 +15,22 @@ class Lock
 
     protected int $expire;
 
+    protected bool $configNotExists;
+
     public function __construct(string $name, string $value, int $expire = self::DEFAULT_KEY_EXPIRE_TIME)
     {
         $this->name = $name;
         $this->value = $value;
         $this->expire = $expire;
+
+        $this->configNotExists = empty((new Config())->host());
     }
 
     public function lock(): bool
     {
+        if($this->configNotExists) {
+            return false;
+        }
 
         if (!$this->redis()->setnx($this->name, $this->value)) {
             return false;
@@ -39,6 +46,10 @@ class Lock
 
     public function isLocked(): bool
     {
+        if($this->configNotExists) {
+            return false;
+        }
+
         $lockValue = $this->redis()->get($this->name);
 
         if ($lockValue !== $this->value) {
@@ -56,6 +67,10 @@ class Lock
 
     public function unlock(): bool
     {
+        if($this->configNotExists) {
+            return false;
+        }
+
         return ($this->redis()->del($this->name) > 0);
     }
 

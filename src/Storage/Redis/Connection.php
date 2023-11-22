@@ -4,7 +4,6 @@ namespace Workflow\Storage\Redis;
 
 use Redis;
 use RedisException;
-use RuntimeException;
 
 class Connection
 {
@@ -65,7 +64,7 @@ class Connection
             }
         }
         catch (RedisException $e) {
-            throw new RuntimeException("Redis connection failed. ".$e->getMessage());
+            ;
         }
     }
 }
