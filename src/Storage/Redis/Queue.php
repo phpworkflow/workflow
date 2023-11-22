@@ -22,7 +22,7 @@ class Queue
      * @var string
      */
 
-    protected bool $configNotExists;
+    protected bool $isConnected;
 
     public function __construct(array $queues, int $maxLength = 10000, int $timeLimitSec = 0, int $blockTimeMs = 1000)
     {
@@ -35,12 +35,18 @@ class Queue
                 : self::DEFAULT_LAST_ID;
         }
 
-        $this->configNotExists = empty((new Config())->host());
+        if(empty((new Config())->host())) {
+            $this->isConnected = false;
+        }
     }
 
-    public function isRedisConnected()
+    public function isRedisConnected(): bool
     {
-        return !$this->configNotExists && $this->redis()->isConnected();
+        if(empty($this->isConnected)) {
+            $this->isConnected = $this->redis()->isConnected();
+        }
+
+        return $this->isConnected;
     }
 
     protected function redis(): Redis
@@ -70,7 +76,7 @@ class Queue
 
     public function len(?string $queue = null): int
     {
-        if($this->configNotExists) {
+        if(!$this->isRedisConnected()) {
             return 0;
         }
         $queue = $queue ?: $this->getFirstQueueName();
@@ -83,7 +89,7 @@ class Queue
      */
     public function push(Event $event, string $id = '*'): string
     {
-        if($this->configNotExists) {
+        if(!$this->isRedisConnected()) {
             return '';
         }
 
@@ -104,7 +110,7 @@ class Queue
      */
     public function pop(?int $count = null): array
     {
-        if($this->configNotExists) {
+        if(!$this->isRedisConnected()) {
             return [];
         }
 
@@ -120,7 +126,7 @@ class Queue
      */
     public function blPop(int $count = 1): array
     {
-        if($this->configNotExists) {
+        if(!$this->isRedisConnected()) {
             return [];
         }
 
@@ -137,7 +143,7 @@ class Queue
      */
     public function trim(int $maxLen = 0, ?string $queue = null): int
     {
-        if($this->configNotExists) {
+        if(!$this->isRedisConnected()) {
             return 0;
         }
 
@@ -148,7 +154,7 @@ class Queue
 
     public function getLastId(?string $queue = null): string
     {
-        if($this->configNotExists) {
+        if(!$this->isRedisConnected()) {
             return self::DEFAULT_LAST_ID;
         }
 

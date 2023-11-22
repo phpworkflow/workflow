@@ -15,7 +15,7 @@ class Lock
 
     protected int $expire;
 
-    protected bool $configNotExists;
+    protected bool $isConnected;
 
     public function __construct(string $name, string $value, int $expire = self::DEFAULT_KEY_EXPIRE_TIME)
     {
@@ -23,12 +23,23 @@ class Lock
         $this->value = $value;
         $this->expire = $expire;
 
-        $this->configNotExists = empty((new Config())->host());
+        if(empty((new Config())->host())) {
+            $this->isConnected = false;
+        }
+    }
+
+    public function isRedisConnected(): bool
+    {
+        if(empty($this->isConnected)) {
+            $this->isConnected = $this->redis()->isConnected();
+        }
+
+        return $this->isConnected;
     }
 
     public function lock(): bool
     {
-        if($this->configNotExists) {
+        if(!$this->isRedisConnected()) {
             return false;
         }
 
@@ -46,7 +57,7 @@ class Lock
 
     public function isLocked(): bool
     {
-        if($this->configNotExists) {
+        if(!$this->isRedisConnected()) {
             return false;
         }
 
@@ -67,7 +78,7 @@ class Lock
 
     public function unlock(): bool
     {
-        if($this->configNotExists) {
+        if(!$this->isRedisConnected()) {
             return false;
         }
 
