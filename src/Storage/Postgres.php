@@ -35,22 +35,22 @@ class Postgres implements IStorage
 
     public const HOST_DELETE_DELAY = 300;
 
-    private static ?IStorage $_storage = null;
+    protected static ?IStorage $_storage = null;
 
-    private static string $dsn = '';
+    protected static string $dsn = '';
 
     /**
      * @var string
      */
-    private string $db_structure;
+    protected string $db_structure;
 
     /* @var ILogger $logger */
-    private ILogger $logger;
+    protected ILogger $logger;
 
     /* @var PDO $db */
-    private PDO $db;
+    protected PDO $db;
 
-    private bool $isDebug;
+    protected bool $isDebug;
 
     protected RedisQueue $eventsQueue;
 
@@ -91,11 +91,11 @@ class Postgres implements IStorage
         return false;
     }
 
-    private static function createInstance(string $dsn): IStorage
+    protected static function createInstance(string $dsn): IStorage
     {
         $connection = new PDO($dsn, null, null,
             [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        return new Postgres($connection);
+        return new static($connection);
     }
 
     public function clone(): IStorage
