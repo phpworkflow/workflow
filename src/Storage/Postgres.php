@@ -126,7 +126,7 @@ class Postgres implements IStorage
      * @return void
      * @throws Exception
      */
-    private function createSubscription(Workflow $workflow, bool $is_new = true): void
+    protected function createSubscription(Workflow $workflow, bool $is_new = true): void
     {
         /**
          * @var Subscription $s
@@ -594,7 +594,7 @@ SQL;
      * @return false|Statement
      * @throws RuntimeException
      */
-    private function doSql(string $sql, array $params, $throwOnError = true)
+    protected function doSql(string $sql, array $params, $throwOnError = true)
     {
         $statement = $this->db->prepare($sql);
         $result = $statement->execute($params);
@@ -705,7 +705,7 @@ SQL;
      * @return void
      * @throws RuntimeException
      */
-    private function update_hosts(): void
+    protected function update_hosts(): void
     {
         $sql = 'INSERT INTO host ( hostname ) VALUES (:hostname)
                     ON CONFLICT (hostname)
@@ -725,7 +725,7 @@ SQL;
      * @return string[]
      * @throws RuntimeException
      */
-    private function get_active_hosts(): array
+    protected function get_active_hosts(): array
     {
         $result = $this->doSql("select hostname from host", []);
 
