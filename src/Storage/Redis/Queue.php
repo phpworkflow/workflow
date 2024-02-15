@@ -51,6 +51,7 @@ class Queue
 
     public function stop(): bool
     {
+        $this->isConnected = false;
         return $this->connection->close();
     }
 
