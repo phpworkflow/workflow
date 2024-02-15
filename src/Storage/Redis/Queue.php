@@ -49,6 +49,11 @@ class Queue
         return $this->isConnected;
     }
 
+    public function stop(): bool
+    {
+        return $this->connection->close();
+    }
+
     protected function redis(): Redis
     {
         if(empty($this->connection)) {

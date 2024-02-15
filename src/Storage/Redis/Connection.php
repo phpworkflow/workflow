@@ -50,6 +50,19 @@ class Connection
         return !empty($this->connection()->ping());
     }
 
+    public function close(): bool
+    {
+        if ($this->connection === null) {
+            return false;
+        }
+
+        try {
+            return $this->connection->close();
+        } catch (RedisException $e) {
+            return false;
+        }
+    }
+
     /**
      * @return void
      * @throws RedisException

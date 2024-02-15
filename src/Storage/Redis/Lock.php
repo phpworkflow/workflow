@@ -85,6 +85,11 @@ class Lock
         return ($this->redis()->del($this->name) > 0);
     }
 
+    public function stop(): bool
+    {
+        return $this->connection->close();
+    }
+
     protected function redis(): Redis
     {
         if(empty($this->connection)) {
