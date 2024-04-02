@@ -100,7 +100,7 @@ class PostgresTest extends TestCase
 
     }
 
-    public function testCreateUniqueWorkflow(): void {
+    public function testCreateUniqueWorkflow1(): void {
         $workflow1=new GoodsSaleWorkflow();
         $workflow1->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER,  self::TEST_CUSTOMER_ID);
         $result = $this->storage->create_workflow($workflow1, true);
@@ -116,12 +116,11 @@ class PostgresTest extends TestCase
         $result = $this->storage->create_workflow($workflow2, true);
         self::assertTrue($result);
 
-
         $this->storage->finish_workflow($workflow2->get_id());
     }
 
-    public function testCreateUniqueWorkflowNoContext(): void{
-        $this->doSql("delete from subscription where context_key like '%RegularAction%'", []);
+    public function testCreateUniqueWorkflow2NoContext(): void{
+        $this->doSql("delete from uniqueness where type like '%RegularAction'", []);
 
         $wf = new RegularAction();
         $result = $this->storage->create_workflow($wf, true);
@@ -132,7 +131,8 @@ class PostgresTest extends TestCase
     }
 
 
-    public function testCreateUniqueWorkflowDifferentTypesSameKey(): void {
+    public function testCreateUniqueWorkflow3DifferentTypesSameKey(): void {
+        error_log("----------------- testCreateUniqueWorkflow3DifferentTypesSameKey");
         $workflow1=new GoodsSaleWorkflow();
         $workflow1->set_context(GoodsSaleWorkflow::WF_KEY_CUSTOMER, self::TEST_CUSTOMER_ID);
         $result = $this->storage->create_workflow($workflow1, true);

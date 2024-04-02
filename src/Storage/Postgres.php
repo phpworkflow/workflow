@@ -253,6 +253,13 @@ class Postgres implements IStorage
                 'status' => IStorage::STATUS_FINISHED
             ]);
 
+            $sql = 'update uniqueness set status = NULL
+                where workflow_id = :workflow_id';
+
+            $this->doSql($sql, [
+                'workflow_id' => $workflow_id,
+            ]);
+
             $sql = 'update workflow set
                     finished_at = current_timestamp,
                     status = :status,
@@ -669,6 +676,11 @@ SQL;
                         'workflow_id' => $workflow_id,
                         'status' => IStorage::STATUS_FINISHED
                     ]);
+
+                $this->doSql('update uniqueness set status = NULL
+                    where workflow_id = :workflow_id', [
+                    'workflow_id' => $workflow_id
+                ]);
             }
 
             $this->db->commit();
@@ -900,36 +912,21 @@ SQL;
         $workflow_id = $workflow->get_id();
         [$key, $value] = $workflow->get_uniqueness();
         $workflowType = $workflow->get_type();
-        // event_type - length 64 char
+        // Shrink type to 62 symbols
         $workflowType = md5($workflowType) . '_' . substr($workflowType, -30);
 
         $sql = <<<SQL
-insert into subscription (workflow_id, status, event_type, context_key, context_value)
-    select coalesce(s.workflow_id, :workflow_id),
-           df.status,
-           coalesce(s.event_type, df.event_type),
-           coalesce(s.context_key, df.context_key),
-           coalesce(s.context_value, df.context_value)
-        from (select :event_type event_type,
-                     :context_key context_key,
-                     :context_value context_value,
-                     :status_active status
-                     ) df
-            left join subscription s on
-                df.status = s.status
-                and df.event_type = s.event_type
-                and df.context_key = s.context_key
-                and df.context_value = s.context_value;
+insert into uniqueness (workflow_id, type, uni_key, value)
+    values (:workflow_id, :type, :key, :value);
 SQL;
 
         try {
             $this->doSql($sql,
                 [
                     'workflow_id' => $workflow_id,
-                    'status_active' => IStorage::STATUS_ACTIVE,
-                    'event_type' => $workflowType,
-                    'context_key' => $key,
-                    'context_value' => $value
+                    'type' => $workflowType,
+                    'key' => $key,
+                    'value' => $value
                 ]);
             return true;
         }

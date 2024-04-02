@@ -76,3 +76,17 @@ CREATE TABLE restored_workflow
     started_at  timestamp NOT NULL,
     created_at  timestamp default current_timestamp
 );
+
+create table uniqueness (
+    workflow_id bigint not null,
+    type varchar(64) not null,
+    uni_key varchar(64) not null,
+    value varchar(128) not null,
+    status varchar(16) default 'ACTIVE',
+    created_at timestamp default current_timestamp,
+    updated_at timestamp default current_timestamp
+);
+
+CREATE UNIQUE INDEX uni_key_value_ind ON uniqueness (type, uni_key, value, status );
+
+CREATE INDEX uni_workflow_ind ON uniqueness (workflow_id);
