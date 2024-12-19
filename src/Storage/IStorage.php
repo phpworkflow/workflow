@@ -18,6 +18,8 @@ interface IStorage
 
     public const CLEANUP_TIME = 3600;
 
+    public const DEFAULT_PRIORITY = 10;
+
     /**
      * Returns the instance of Storage (IStorage interface)
      * @param string $dsn

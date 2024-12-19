@@ -389,31 +389,38 @@ SQL;
         /** @noinspection SqlConstantCondition */
         $sql = <<<SQL
 select type, array_to_json(wf_list[1: :limit]) wf_list from (
-       select type, array_agg(workflow_id) wf_list
-       from (
-                select workflow_id,
-                       type
-                from (select distinct wf.workflow_id, wf.type, wf.scheduled_at
-                      from workflow wf
-                               left join
-                           event e on wf.workflow_id = e.workflow_id
-                      where ((e.status = :status and e.created_at <= current_timestamp)
-                          or
-                             (wf.status = :status and wf.scheduled_at <= current_timestamp))
-                     ) wf order by scheduled_at
-            ) aa
-       group by type
-   ) bb;
+                select aa.type, c.priority, array_agg(workflow_id) wf_list
+                from (
+                         select workflow_id,
+                                type
+                         from (select distinct wf.workflow_id, wf.type, wf.scheduled_at
+                               from workflow wf
+                                        left join
+                                    event e on wf.workflow_id = e.workflow_id
+                               where ((e.status = :status and e.created_at <= current_timestamp)
+                                   or
+                                      (wf.status = :status and wf.scheduled_at <= current_timestamp))
+                              ) wf order by scheduled_at
+                     ) aa left join config c on aa.type = c.type
+                group by aa.type, priority
+                order by coalesce(priority, :default_priority)
+        ) bb;
 SQL;
 
         $statement = $this->doSql($sql, [
             'status' => IStorage::STATUS_ACTIVE,
-            'limit' => $limit
+            'limit' => $limit,
+            'default_priority' => IStorage::DEFAULT_PRIORITY
         ]);
 
         $result = [];
         while ($row = $statement->fetch()) {
-            $result[$row['type']] = json_decode($row['wf_list'], null, 512, JSON_THROW_ON_ERROR);
+            try {
+                $result[$row['type']] = json_decode($row['wf_list'], null, 512, JSON_THROW_ON_ERROR);
+            }
+            catch (JsonException $e) {
+                $this->logger->error($e->getMessage());
+            }
         }
 
         return $result;
@@ -758,11 +765,13 @@ SQL;
 
         $active_hosts = $this->get_active_hosts();
 
-        $sql = 'select workflow_id, "lock", context, started_at from workflow where
-                    status = :status
-                    and "lock" <> \'\'
-                    and EXTRACT(epoch FROM (current_timestamp - started_at)) > :time_limit
-                    limit :limit';
+        $sql = <<<SQL
+select workflow_id, "lock", context, started_at from workflow w left join config c on w.type = c.type where 1=1
+    and status = :status
+    and "lock" <> ''
+    and EXTRACT(epoch FROM (current_timestamp - started_at)) > coalesce(c.recovery_time, :time_limit)
+    limit :limit;
+SQL;
 
         $result = $this->doSql($sql, [
             'status' => IStorage::STATUS_IN_PROGRESS,
