@@ -637,15 +637,16 @@ SQL;
 
             $this->db->beginTransaction();
 
-            $sql = 'update workflow set
-                context = :context,
-                scheduled_at = to_timestamp(:scheduled_at_ts),
-                finished_at = current_timestamp,
-                "lock" = coalesce(:lock, "lock"),
-                status = coalesce(:status, status),
-                error_count = error_count - coalesce(:error_count, 0)
-                    where workflow_id = :workflow_id
-        ';
+            $sql = <<<SQL
+UPDATE workflow SET
+    context = :context,
+    scheduled_at = to_timestamp(:scheduled_at_ts),
+    finished_at = current_timestamp,
+    "lock" = coalesce(:lock, "lock"),
+    status = coalesce(:status, status),
+    error_count = error_count - coalesce(:error_count, 0)
+WHERE workflow_id = :workflow_id
+SQL;
 
             /** @noinspection NestedTernaryOperatorInspection */
             $status = $workflow->is_finished()
@@ -779,7 +780,6 @@ SELECT workflow_id, "lock", context, started_at FROM workflow w LEFT JOIN config
 SQL;
 
         $result = $this->doSql($sql, [
-            'status' => IStorage::STATUS_IN_PROGRESS,
             'time_limit' => $this->get_execution_time_limit(),
             'limit' => self::TASK_LIST_SIZE_LIMIT
         ]);
