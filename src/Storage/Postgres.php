@@ -158,12 +158,12 @@ class Postgres implements IStorage
                     continue;
                 }
 
-                $sql =  'INSERT INTO subscription (
-                          status, event_type, context_key, context_value, workflow_id)
-                    VALUES (:status, :event_type, :context_key, :context_value, :workflow_id)';
+                $sql = <<<SQL
+INSERT INTO subscription (status, event_type, context_key, context_value, workflow_id)
+VALUES ('ACTIVE', :event_type, :context_key, :context_value, :workflow_id)
+SQL;
 
                 $this->doSql($sql, [
-                    'status' => IStorage::STATUS_ACTIVE,
                     'event_type' => $s->event_type,
                     'context_key' => $s->context_key,
                     'context_value' => $v,
@@ -183,14 +183,15 @@ class Postgres implements IStorage
         try {
             $this->db->beginTransaction();
 
-            $sql = 'INSERT INTO workflow (type, context, scheduled_at, finished_at, status)
-                VALUES (:type, :context, to_timestamp(:scheduled_at_ts), null, :status)';
+            $sql = <<<SQL
+INSERT INTO workflow (type, context, scheduled_at, finished_at, status)
+VALUES (:type, :context, to_timestamp(:scheduled_at_ts), null, 'ACTIVE')
+SQL;
 
             $this->doSql($sql, [
                 'type' => $workflow->get_type(),
                 'context' => $workflow->get_state(),
-                'scheduled_at_ts' => $workflow->get_start_time(),
-                'status' => IStorage::STATUS_ACTIVE
+                'scheduled_at_ts' => $workflow->get_start_time()
             ]);
 
             $workflow_id = $this->db->lastInsertId('workflow_workflow_id_seq');
@@ -234,42 +235,45 @@ class Postgres implements IStorage
 
             $this->db->beginTransaction();
 
-            $sql = 'update event set finished_at = current_timestamp,
-                 status = :status,
-                 started_at = current_timestamp
-                where workflow_id = :workflow_id and status = :status_active';
+            $sql = <<<SQL
+UPDATE event SET finished_at = current_timestamp,
+     status = 'PROCESSED',
+     started_at = current_timestamp
+WHERE workflow_id = :workflow_id AND status = 'ACTIVE'
+SQL;
 
             $this->doSql($sql, [
-                'workflow_id' => $workflow_id,
-                'status' => IStorage::STATUS_PROCESSED,
-                'status_active' => IStorage::STATUS_ACTIVE
+                'workflow_id' => $workflow_id
             ]);
 
-            $sql = 'update subscription set status = :status
-                where workflow_id = :workflow_id';
+            $sql = <<<SQL
+UPDATE subscription SET status = 'FINISHED'
+WHERE workflow_id = :workflow_id
+SQL;
 
             $this->doSql($sql, [
-                'workflow_id' => $workflow_id,
-                'status' => IStorage::STATUS_FINISHED
+                'workflow_id' => $workflow_id
             ]);
 
-            $sql = 'update uniqueness set status = NULL
-                where workflow_id = :workflow_id';
+            $sql = <<<SQL
+UPDATE uniqueness SET status = NULL
+WHERE workflow_id = :workflow_id
+SQL;
 
             $this->doSql($sql, [
                 'workflow_id' => $workflow_id,
             ]);
 
-            $sql = 'update workflow set
-                    finished_at = current_timestamp,
-                    status = :status,
-                    "lock" = :lock
-                where workflow_id = :workflow_id';
+            $sql = <<<SQL
+UPDATE workflow SET
+    finished_at = current_timestamp,
+    status = 'FINISHED',
+    "lock" = ''
+WHERE workflow_id = :workflow_id
+SQL;
 
             $this->doSql($sql, [
-                'workflow_id' => $workflow_id,
-                'status' => IStorage::STATUS_FINISHED,
-                'lock' => ''
+                'workflow_id' => $workflow_id
             ]);
 
             $this->db->commit();
@@ -285,18 +289,16 @@ class Postgres implements IStorage
 
     public function set_scheduled_at_for_top_priority(string $type, string $key, string $value, int $ts = 0): bool {
 $sql = <<<SQL
-
-update workflow set scheduled_at = to_timestamp(:ts) where workflow_id in (
-    select workflow_id from subscription where
-                                             context_key = :key
-                                           and context_value = :value
-                                           and status = :status
-    ) and type = :type;
+UPDATE workflow SET scheduled_at = to_timestamp(:ts) WHERE workflow_id IN (
+    SELECT workflow_id FROM subscription WHERE
+        context_key = :key
+        AND context_value = :value
+        AND status = 'ACTIVE'
+    ) AND type = :type
 SQL;
 
         $stm = $this->doSql($sql, [
             'type' => $type,
-            'status' => IStorage::STATUS_ACTIVE,
             'key' => $key,
             'value' => $value,
             'ts' => $ts
@@ -317,16 +319,18 @@ SQL;
     public function create_event(Event $event): ?int
     {
 
-        // cast(:type as text) type, :context, :event_status,
-        $sql = "select distinct workflow_id
-                    from subscription
-                        where event_type = :type
-                            and status = :status
-                            and (context_key = :context_key and context_value = :context_value)
-                limit 1000
-        ";
+        $sql = <<<SQL
+SELECT DISTINCT workflow_id
+FROM subscription
+WHERE event_type = :type
+    AND status = 'ACTIVE'
+    AND (context_key = :context_key AND context_value = :context_value)
+LIMIT 1000
+SQL;
 
-        $insertSql = 'insert into event (type, context, status, workflow_id) values (:type, :context, :status, :workflow_id)';
+        $insertSql = <<<SQL
+INSERT INTO event (type, context, status, workflow_id) VALUES (:type, :context, 'ACTIVE', :workflow_id)
+SQL;
 
         // empty key => value for case "where event_type = :type and context_key is null and context_value is null"
         // if $keyData is empty
@@ -337,7 +341,6 @@ SQL;
             foreach ($keyData as $context_key => $context_value) {
                 $statement = $this->doSql($sql, [
                     'type' => $event->get_type(),
-                    'status' => IStorage::STATUS_ACTIVE,
                     'context_key' => $context_key,
                     'context_value' => $context_value,
                 ]);
@@ -348,7 +351,6 @@ SQL;
                     $stm = $this->doSql($insertSql, [
                         'type' => $event->get_type(),
                         'context' => $event->getContext(),
-                        'status' => IStorage::STATUS_ACTIVE,
                         'workflow_id' => $workflow_id
                     ]);
 
@@ -361,11 +363,12 @@ SQL;
             }
 
             if ($countEvents === 0) {
-                $sql = 'insert into event (type, status, context, workflow_id) values (:type, :status, :context, 0)';
+                $sql = <<<SQL
+INSERT INTO event (type, status, context, workflow_id) VALUES (:type, 'NOSUBSCR', :context, 0)
+SQL;
 
                 $this->doSql($sql, [
                     'type' => $event->get_type(),
-                    'status' => IStorage::STATUS_NO_SUBSCRIBERS,
                     'context' => $event->getContext()
                 ]);
             }
@@ -388,27 +391,24 @@ SQL;
     {
         /** @noinspection SqlConstantCondition */
         $sql = <<<SQL
-select type, array_to_json(wf_list[1: :limit]) wf_list from (
-                select aa.type, c.priority, array_agg(workflow_id) wf_list
-                from (
-                         select workflow_id,
-                                type
-                         from (select distinct wf.workflow_id, wf.type, wf.scheduled_at
-                               from workflow wf
-                                        left join
-                                    event e on wf.workflow_id = e.workflow_id
-                               where ((e.status = :status and e.created_at <= current_timestamp)
-                                   or
-                                      (wf.status = :status and wf.scheduled_at <= current_timestamp))
-                              ) wf order by scheduled_at
-                     ) aa left join config c on aa.type = c.type
-                group by aa.type, priority
-                order by coalesce(priority, :default_priority)
-        ) bb;
+SELECT type, array_to_json(wf_list[1: :limit]) wf_list FROM (
+    SELECT aa.type, c.priority, array_agg(workflow_id) wf_list
+    FROM (
+        SELECT workflow_id, type
+        FROM (
+            SELECT DISTINCT wf.workflow_id, wf.type, wf.scheduled_at
+            FROM workflow wf
+            LEFT JOIN event e ON wf.workflow_id = e.workflow_id
+            WHERE ((e.status = 'ACTIVE' AND e.created_at <= current_timestamp)
+                OR (wf.status = 'ACTIVE' AND wf.scheduled_at <= current_timestamp))
+        ) wf ORDER BY scheduled_at
+    ) aa LEFT JOIN config c ON aa.type = c.type
+    GROUP BY aa.type, priority
+    ORDER BY coalesce(priority, :default_priority)
+) bb
 SQL;
 
         $statement = $this->doSql($sql, [
-            'status' => IStorage::STATUS_ACTIVE,
             'limit' => $limit,
             'default_priority' => IStorage::DEFAULT_PRIORITY
         ]);
@@ -434,16 +434,19 @@ SQL;
     public function get_active_workflow_ids($limit = self::TASK_LIST_SIZE_LIMIT): array
     {
         /** @noinspection SqlConstantCondition */
-        $sql = 'select distinct workflow_id from ( select wf.workflow_id, wf.scheduled_at, random() rnd
-            from workflow wf left join
-                event e on wf.workflow_id = e.workflow_id
-            where ((e.status = :status and e.created_at <= current_timestamp)
-                or (wf.status = :status and wf.scheduled_at <= current_timestamp))
-            order by wf.scheduled_at, rnd ) wf
-                limit :limit';
+        $sql = <<<SQL
+SELECT DISTINCT workflow_id FROM (
+    SELECT wf.workflow_id, wf.scheduled_at, random() rnd
+    FROM workflow wf
+    LEFT JOIN event e ON wf.workflow_id = e.workflow_id
+    WHERE ((e.status = 'ACTIVE' AND e.created_at <= current_timestamp)
+        OR (wf.status = 'ACTIVE' AND wf.scheduled_at <= current_timestamp))
+    ORDER BY wf.scheduled_at, rnd
+) wf
+LIMIT :limit
+SQL;
 
         $statement = $this->doSql($sql, [
-            'status' => IStorage::STATUS_ACTIVE,
             'limit' => $limit
         ]);
 
@@ -471,8 +474,8 @@ WITH RankedWorkflows AS (
     FROM
         workflow
     WHERE
-        status = :status
-        and scheduled_at < current_timestamp + interval '1 minute'
+        status = 'ACTIVE'
+        AND scheduled_at < current_timestamp + interval '1 minute'
 )
 SELECT
     workflow_id,
@@ -497,16 +500,14 @@ WHERE
         FROM
             event
         WHERE
-            status = :event_status
+            status = 'ACTIVE'
         ORDER BY
             created_at
         LIMIT :limit
-    );
+    )
 SQL;
 
         $statement = $this->doSql($sql, [
-            'event_status' => IStorage::STATUS_ACTIVE,
-            'status' => IStorage::STATUS_ACTIVE,
             'limit' => $limit
         ]);
 
@@ -537,18 +538,18 @@ SQL;
         ];
 
         if ($doLock) {
-            $sql = 'UPDATE workflow SET
-                "lock" = :lock_id,
-                status = :status,
-                started_at = current_timestamp,
-                error_count=error_count+1
-            WHERE workflow_id = :workflow_id AND "lock" = :lock';
+            $sql = <<<SQL
+UPDATE workflow SET
+    "lock" = :lock_id,
+    status = 'INPROGRESS',
+    started_at = current_timestamp,
+    error_count = error_count + 1
+WHERE workflow_id = :workflow_id AND "lock" = ''
+SQL;
 
             $this->doSql($sql, [
                 'lock_id' => $lockId,
-                'status' => IStorage::STATUS_IN_PROGRESS,
-                'workflow_id' => $id,
-                'lock' => ''
+                'workflow_id' => $id
             ]);
 
             $selectSql .= ' AND "lock"=:lock_id';
@@ -666,26 +667,29 @@ SQL;
 
             if ($status === IStorage::STATUS_FINISHED) {
 
-                $this->doSql(
-                    "update event set finished_at = current_timestamp,
-                            started_at = current_timestamp,
-                            status = :status
-                                where workflow_id = :workflow_id
-                                and status = :status_active",
-                    [
-                        'workflow_id' => $workflow_id,
-                        'status' => IStorage::STATUS_PROCESSED,
-                        'status_active' => IStorage::STATUS_ACTIVE
-                    ]);
+                $sql = <<<SQL
+UPDATE event SET finished_at = current_timestamp,
+    started_at = current_timestamp,
+    status = 'PROCESSED'
+WHERE workflow_id = :workflow_id AND status = 'ACTIVE'
+SQL;
+                $this->doSql($sql, [
+                    'workflow_id' => $workflow_id
+                ]);
 
-                $this->doSql('update subscription set status = :status
-                    where workflow_id = :workflow_id', [
-                        'workflow_id' => $workflow_id,
-                        'status' => IStorage::STATUS_FINISHED
-                    ]);
+                $sql = <<<SQL
+UPDATE subscription SET status = 'FINISHED'
+WHERE workflow_id = :workflow_id
+SQL;
+                $this->doSql($sql, [
+                    'workflow_id' => $workflow_id
+                ]);
 
-                $this->doSql('update uniqueness set status = NULL
-                    where workflow_id = :workflow_id', [
+                $sql = <<<SQL
+UPDATE uniqueness SET status = NULL
+WHERE workflow_id = :workflow_id
+SQL;
+                $this->doSql($sql, [
                     'workflow_id' => $workflow_id
                 ]);
             }
@@ -708,14 +712,15 @@ SQL;
      */
     public function close_event(Event $event): bool
     {
-        $sql = 'UPDATE event set status = :status,
-                 finished_at = current_timestamp,
-                 started_at = coalesce(:started_at, created_at)
-              WHERE event_id = :event_id';
+        $sql = <<<SQL
+UPDATE event SET status = 'PROCESSED',
+    finished_at = current_timestamp,
+    started_at = coalesce(:started_at, created_at)
+WHERE event_id = :event_id
+SQL;
 
         return (bool)($this->doSql($sql, [
             'event_id' => $event->get_id(),
-            'status' => self::STATUS_PROCESSED,
             'started_at' => $event->getStartedAt()
         ]));
     }
@@ -766,10 +771,10 @@ SQL;
         $active_hosts = $this->get_active_hosts();
 
         $sql = <<<SQL
-select workflow_id, "lock", context, started_at from workflow w left join config c on w.type = c.type where 1=1
-    and status = :status
-    and "lock" <> ''
-    and EXTRACT(epoch FROM (current_timestamp - started_at)) > coalesce(c.recovery_time, :time_limit)
+SELECT workflow_id, "lock", context, started_at FROM workflow w LEFT JOIN config c on w.type = c.type WHERE 1=1
+    AND status = 'INPROGRESS'
+    AND "lock" <> ''
+    AND w.started_at <= now() - (coalesce(c.recovery_time, :time_limit) * interval '1 second')
     limit :limit;
 SQL;
 
@@ -792,9 +797,10 @@ SQL;
                 continue;
             }
 
-            $updRes = $this->doSql('update workflow set "lock" = :lock, status=:status WHERE workflow_id = :workflow_id', [
-                'lock' => '',
-                'status' => IStorage::STATUS_ACTIVE,
+            $sql = <<<SQL
+UPDATE workflow SET "lock" = '', status = 'ACTIVE' WHERE workflow_id = :workflow_id
+SQL;
+            $updRes = $this->doSql($sql, [
                 'workflow_id' => $workflow_id
             ]);
 
@@ -834,15 +840,15 @@ SQL;
      */
     public function get_events(int $workflow_id): array
     {
-        $sql = "select event_id, type, context, current_timestamp ts from event where
-                status = :status
-                and workflow_id = :workflow_id
-                    order by created_at
-                    limit 100;
-                ";
+        $sql = <<<SQL
+SELECT event_id, type, context, current_timestamp ts
+FROM event
+WHERE status = 'ACTIVE' AND workflow_id = :workflow_id
+ORDER BY created_at
+LIMIT 100
+SQL;
 
         $result = $this->doSql($sql, [
-            'status' => IStorage::STATUS_ACTIVE,
             'workflow_id' => $workflow_id
         ]);
 

@@ -16,6 +16,15 @@ CREATE TABLE workflow (
   error_count	INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE INDEX CONCURRENTLY workflow_inprog_started_ind
+  ON workflow (started_at)
+  WHERE status = 'INPROGRESS';
+
+CREATE INDEX CONCURRENTLY workflow_active_sched_ind
+  ON workflow (scheduled_at)
+  INCLUDE (workflow_id, type)
+  WHERE status = 'ACTIVE';
+
 CREATE TABLE event (
   event_id	bigserial NOT NULL PRIMARY KEY,
   type	varchar(64) NOT NULL DEFAULT '',
@@ -90,3 +99,14 @@ create table uniqueness (
 CREATE UNIQUE INDEX uni_key_value_ind ON uniqueness (type, uni_key, value, status );
 
 CREATE INDEX uni_workflow_ind ON uniqueness (workflow_id);
+
+create table config ( id serial primary key,
+                      type varchar(128) not null,
+                      recovery_time integer not null default 3600,
+                      priority integer not null default 10,
+                      options text default '{}',
+                      created_at timestamp default current_timestamp,
+                      updated_at timestamp default current_timestamp
+);
+
+create index uni_type_ind on config(type);
